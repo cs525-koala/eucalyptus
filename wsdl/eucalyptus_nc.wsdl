@@ -160,6 +160,28 @@
       </xs:complexContent>
     </xs:complexType>
     
+    <xs:complexType name="ncMigrateInstanceType">
+      <xs:complexContent>
+	<xs:extension base="tns:eucalyptusMessage">
+	  <xs:sequence>
+	    <xs:element name="instanceId" type="xs:string" />
+	  </xs:sequence>
+	</xs:extension>
+      </xs:complexContent>
+    </xs:complexType>
+
+    <xs:complexType name="ncMigrateInstanceResponseType">
+      <xs:complexContent>
+	<xs:extension base="tns:eucalyptusMessage">
+	  <xs:sequence>
+	    <xs:element name="instanceId" type="xs:string" />
+	    <xs:element name="shutdownState" type="xs:string" minOccurs="0" maxOccurs="1" />
+	    <xs:element name="previousState" type="xs:string" minOccurs="0" maxOccurs="1" />
+	  </xs:sequence>
+	</xs:extension>
+      </xs:complexContent>
+    </xs:complexType>
+    
     <xs:complexType name="ncDescribeResourceType">
       <xs:complexContent>
 	<xs:extension base="tns:eucalyptusMessage">
@@ -216,6 +238,44 @@
     </xs:complexType>
     
     <xs:complexType name="ncRunInstanceResponseType">
+      <xs:complexContent>
+	<xs:extension base="tns:eucalyptusMessage">
+	  <xs:sequence>
+	    <xs:element minOccurs="0" name="instance" type="tns:instanceType"/>
+	  </xs:sequence>
+	</xs:extension>
+      </xs:complexContent>
+    </xs:complexType>
+    
+    <xs:complexType name="ncReceiveMigrationInstanceType">
+      <xs:complexContent>
+	<xs:extension base="tns:eucalyptusMessage">
+	  <xs:sequence>
+	    <xs:element name="imageId" type="xs:string"/>
+	    <xs:element minOccurs="0" name="kernelId" type="xs:string"/>
+	    <xs:element minOccurs="0" name="ramdiskId" type="xs:string"/>
+	    <xs:element name="imageURL" type="xs:string"/>
+	    <xs:element minOccurs="0" name="kernelURL" type="xs:string"/>
+	    <xs:element minOccurs="0" name="ramdiskURL" type="xs:string"/>
+	    <xs:element name="reservationId" type="xs:string"/>
+	    <xs:element name="instanceId" type="xs:string"/>
+	    <xs:element name="instanceType" type="tns:virtualMachineType"/>
+	    <xs:element name="keyName" type="xs:string"/>
+	    <xs:element name="netParams" type="tns:netConfigType"/>
+<!--
+	    <xs:element name="privateMacAddress" type="xs:string"/>
+	    <xs:element name="privateIp" type="xs:string"/>
+	    <xs:element name="vlan" type="xs:int"/>
+-->
+	    <xs:element minOccurs="0" name="userData" type="xs:string"/>
+	    <xs:element minOccurs="0" name="launchIndex" type="xs:string"/>
+	    <xs:element minOccurs="0" maxOccurs="64" name="groupNames" type="xs:string"/>
+	  </xs:sequence>
+	</xs:extension>
+      </xs:complexContent>
+    </xs:complexType>
+    
+    <xs:complexType name="ncReceiveMigrationInstanceResponseType">
       <xs:complexContent>
 	<xs:extension base="tns:eucalyptusMessage">
 	  <xs:sequence>
@@ -326,6 +386,9 @@
     <xs:element name="ncTerminateInstance" nillable="true" type="tns:ncTerminateInstanceType"/>
     <xs:element name="ncTerminateInstanceResponse" nillable="true" type="tns:ncTerminateInstanceResponseType"/>
 
+    <xs:element name="ncMigrateInstance" nillable="true" type="tns:ncMigrateInstanceType"/>
+    <xs:element name="ncMigrateInstanceResponse" nillable="true" type="tns:ncMigrateInstanceResponseType"/>
+
     <xs:element name="ncRebootInstance" nillable="true" type="tns:ncRebootInstanceType"/>
     <xs:element name="ncRebootInstanceResponse" nillable="true" type="tns:ncRebootInstanceResponseType"/>
 
@@ -343,6 +406,9 @@
     
     <xs:element name="ncRunInstance" nillable="true" type="tns:ncRunInstanceType"/>
     <xs:element name="ncRunInstanceResponse" nillable="true" type="tns:ncRunInstanceResponseType"/>
+
+    <xs:element name="ncReceiveMigrationInstance" nillable="true" type="tns:ncReceiveMigrationInstanceType"/>
+    <xs:element name="ncReceiveMigrationInstanceResponse" nillable="true" type="tns:ncReceiveMigrationInstanceResponseType"/>
     
   </xs:schema>
 </wsdl:types>
@@ -362,6 +428,11 @@
   </wsdl:part>
 </wsdl:message>
 
+<wsdl:message name="ncReceiveMigrationInstanceResponse">
+  <wsdl:part element="tns:ncReceiveMigrationInstanceResponse" name="ncReceiveMigrationInstanceResponse">
+  </wsdl:part>
+</wsdl:message>
+
 <wsdl:message name="ncDescribeInstancesResponse">
   <wsdl:part element="tns:ncDescribeInstancesResponse" name="ncDescribeInstancesResponse">
   </wsdl:part>
@@ -369,6 +440,11 @@
 
 <wsdl:message name="ncTerminateInstanceResponse">
   <wsdl:part element="tns:ncTerminateInstanceResponse" name="ncTerminateInstanceResponse">
+  </wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="ncMigrateInstanceResponse">
+  <wsdl:part element="tns:ncMigrateInstanceResponse" name="ncMigrateInstanceResponse">
   </wsdl:part>
 </wsdl:message>
 
@@ -412,6 +488,11 @@
   </wsdl:part>
 </wsdl:message>
 
+<wsdl:message name="ncReceiveMigrationInstance">
+  <wsdl:part element="tns:ncReceiveMigrationInstance" name="ncReceiveMigrationInstance">
+  </wsdl:part>
+</wsdl:message>
+
 <wsdl:message name="ncDescribeInstances">
   <wsdl:part element="tns:ncDescribeInstances" name="ncDescribeInstances">
     </wsdl:part>
@@ -419,6 +500,11 @@
 
 <wsdl:message name="ncTerminateInstance">
   <wsdl:part element="tns:ncTerminateInstance" name="ncTerminateInstance">
+  </wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="ncMigrateInstance">
+  <wsdl:part element="tns:ncMigrateInstance" name="ncMigrateInstance">
   </wsdl:part>
 </wsdl:message>
 
@@ -470,6 +556,13 @@
     </wsdl:output>
   </wsdl:operation>
 
+  <wsdl:operation name="ncReceiveMigrationInstance">
+    <wsdl:input message="tns:ncReceiveMigrationInstance" name="ncReceiveMigrationInstance">
+    </wsdl:input>
+    <wsdl:output message="tns:ncReceiveMigrationInstanceResponse" name="ncReceiveMigrationInstanceResponse">
+    </wsdl:output>
+  </wsdl:operation>
+
   <wsdl:operation name="ncDescribeInstances">
     <wsdl:input message="tns:ncDescribeInstances" name="ncDescribeInstances">
     </wsdl:input>
@@ -481,6 +574,13 @@
     <wsdl:input message="tns:ncTerminateInstance" name="ncTerminateInstance">
     </wsdl:input>
     <wsdl:output message="tns:ncTerminateInstanceResponse" name="ncTerminateInstanceResponse">
+    </wsdl:output>
+  </wsdl:operation>
+
+  <wsdl:operation name="ncMigrateInstance">
+    <wsdl:input message="tns:ncMigrateInstance" name="ncMigrateInstance">
+    </wsdl:input>
+    <wsdl:output message="tns:ncMigrateInstanceResponse" name="ncMigrateInstanceResponse">
     </wsdl:output>
   </wsdl:operation>
 
@@ -554,6 +654,16 @@
     </wsdl:output>
   </wsdl:operation>
 
+  <wsdl:operation name="ncReceiveMigrationInstance">
+    <soap:operation soapAction="EucalyptusNC#ncReceiveMigrationInstance" style="document"/>
+    <wsdl:input name="ncReceiveMigrationInstance">
+      <soap:body use="literal"/>
+    </wsdl:input>
+    <wsdl:output name="ncReceiveMigrationInstanceResponse">
+      <soap:body use="literal"/>
+    </wsdl:output>
+  </wsdl:operation>
+
   <wsdl:operation name="ncDescribeInstances">
     <soap:operation soapAction="EucalyptusNC#ncDescribeInstances" style="document"/>
     <wsdl:input name="ncDescribeInstances">
@@ -570,6 +680,16 @@
       <soap:body use="literal"/>
     </wsdl:input>
     <wsdl:output name="ncTerminateInstanceResponse">
+      <soap:body use="literal"/>
+    </wsdl:output>
+  </wsdl:operation>
+
+  <wsdl:operation name="ncMigrateInstance">
+    <soap:operation soapAction="EucalyptusNC#ncMigrateInstance" style="document"/>
+    <wsdl:input name="ncMigrateInstance">
+      <soap:body use="literal"/>
+    </wsdl:input>
+    <wsdl:output name="ncMigrateInstanceResponse">
       <soap:body use="literal"/>
     </wsdl:output>
   </wsdl:operation>
