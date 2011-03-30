@@ -513,7 +513,7 @@ doAttachVolume (	struct nc_state_t *nc,
                 free(local_iscsi_dev);
             }
         } else {
-            if (instance->state != BOOTING && instance->state != STAGING &&  instance->migration_state !=  RECIEVE_MIGRATION)  {
+            if (instance->state != BOOTING && instance->state != STAGING &&  instance->migrationState !=  RECIEVE_MIGRATION)  {
                 logprintfl (EUCAWARN, "warning: domain %s not running on hypervisor, cannot attach device\n", instanceId);
             }
             ret = ERROR;
@@ -621,7 +621,7 @@ doDetachVolume (	struct nc_state_t *nc,
                 free(local_iscsi_dev);
             }
         } else {
-            if (instance->state != BOOTING && instance->state != STAGING && instance->migration_state != RECIEVE_MIGRATION) {
+            if (instance->state != BOOTING && instance->state != STAGING && instance->migrationState != RECIEVE_MIGRATION) {
                 logprintfl (EUCAWARN, "warning: domain %s not running on hypervisor, cannot detach device\n", instanceId);
             }
             ret = ERROR;
