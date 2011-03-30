@@ -232,11 +232,92 @@ doReceiveMigrationInstance (	struct nc_state_t *nc,
 		//		char *privMac, char *privIp, int vlan, 
 		netConfig *netparams,
 		char *userData, char *launchIndex, char **groupNames,
-		int groupNamesSize, ncInstance **outInst)
+		int groupNamesSize, ncInstance **outInst, int * listening_port)
 {
-    logprintfl(EUCAERROR, "ReceiveMigration not implemented!\n");
-    return 0;
+  // Do much of what runInstance does, only don't start the VM (just move into RM state)
 
+  //=============== From runInstance =====================
+    ncInstance * instance = NULL;
+    * outInst = NULL;
+    int error;
+    pid_t pid;
+    netConfig ncnet;
+
+    memcpy(&ncnet, netparams, sizeof(netConfig));
+
+    /* check as much as possible before forking off and returning */
+    sem_p (inst_sem);
+    instance = find_instance (&global_instances, instanceId);
+    sem_v (inst_sem);
+    if (instance) {
+        logprintfl (EUCAFATAL, "Error: instance %s already running\n", instanceId);
+        return 1; /* TODO: return meaningful error codes? */
+    }
+    if (!(instance = allocate_instance (instanceId, 
+                                        reservationId,
+                                        params, 
+                                        imageId, imageURL,
+                                        kernelId, kernelURL,
+                                        ramdiskId, ramdiskURL,
+                                        instance_state_names[PENDING], 
+                                        PENDING, 
+                                        meta->userId, 
+                                        &ncnet, keyName,
+                                        userData, launchIndex, groupNames, groupNamesSize))) {
+        logprintfl (EUCAFATAL, "Error: could not allocate instance struct\n");
+        return 2;
+    }
+    // XXX: Figure out what state this should go into, probably STAGING or similar
+    // with the migration state set as 'RM'
+    //change_state(instance, STAGING);
+
+    sem_p (inst_sem); 
+    error = add_instance (&global_instances, instance);
+    sem_v (inst_sem);
+    if ( error ) {
+        free_instance (&instance);
+        logprintfl (EUCAFATAL, "Error: could not save instance struct\n");
+        return error;
+    }
+
+    instance->launchTime = time (NULL);
+    /*
+    instance->params.mem = params->mem;
+    instance->params.cores = params->cores;
+    instance->params.disk = params->disk;
+    strcpy (instance->ncnet.privateIp, "0.0.0.0");
+    strcpy (instance->ncnet.publicIp, "0.0.0.0");
+    */
+
+    /* do the potentially long tasks in a thread */
+#if 0
+    pthread_attr_t* attr = (pthread_attr_t*) malloc(sizeof(pthread_attr_t));
+    if (!attr) {
+        free_instance (&instance);
+        logprintfl (EUCAFATAL, "Error: out of memory\n");
+        return 1;
+    }
+    pthread_attr_init(attr);
+    pthread_attr_setdetachstate(attr, PTHREAD_CREATE_DETACHED);
+
+    if ( pthread_create (&(instance->tcb), attr, startup_thread, (void *)instance) ) {
+        pthread_attr_destroy(attr);
+        logprintfl (EUCAFATAL, "failed to spawn a VM startup thread\n");
+        sem_p (inst_sem);
+        remove_instance (&global_instances, instance);
+        sem_v (inst_sem);
+        free_instance (&instance);
+	free(attr);
+        return 1;
+    }
+    pthread_attr_destroy(attr);
+    if (attr) free(attr);
+#endif
+
+    * outInst = instance;
+    * listening_port = 1234; // XXX: Pick a port from a port reserve or similar.
+    return 0;
+  //=============== From runInstance =====================
 }
 
 /* thread that does the actual reboot */
