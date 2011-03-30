@@ -503,7 +503,19 @@ doMigrateInstance(	struct nc_state_t *nc,
 			int *migrateState,
 			int *previousState)
 {
-	logprintfl(EUCAERROR, "no default for doMigrateInstance!\n");
+  // Try to migrate the indicated instance.
+
+  // First, find the instance:
+  sem_p (inst_sem);
+  instance = find_instance (&global_instances, instanceId);
+  sem_v (inst_sem);
+  if (!instance) {
+    logprintfl(EUCAFATAL, "Error: Could not find instance %s to migrate\n", instanceId);
+    return 1;
+  }
+
+  // XXX: Finish implementing me! For now, just error out.
+
 	return ERROR_FATAL;
 }
 
