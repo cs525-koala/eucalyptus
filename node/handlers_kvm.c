@@ -498,7 +498,9 @@ static int
 doMigrateInstance(	struct nc_state_t *nc,
 			ncMetadata *meta,
 			char *instanceId,
-			int *shutdownState,
+      char *migrationNode,
+      char *migrationURI,
+			int *migrateState,
 			int *previousState)
 {
 	logprintfl(EUCAERROR, "no default for doMigrateInstance!\n");

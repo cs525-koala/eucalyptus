@@ -687,13 +687,20 @@ adb_ncMigrateInstanceResponse_t* ncMigrateInstanceMarshal (adb_ncMigrateInstance
 
     // get operation-specific fields from input
     axis2_char_t * instanceId = adb_ncMigrateInstanceType_get_instanceId(input, env);
+    axis2_char_t * migrationNode = adb_ncMigrateInstanceType_get_migrationNode(input, env);
+    axis2_char_t * migrationURI = adb_ncMigrateInstanceType_get_migrationURI(input, env);
 
     eventlog("NC", userId, correlationId, "MigrateInstance", "begin");
     { // do it
         ncMetadata meta = { correlationId, userId };
         int migrateState, previousState;
 
-        int error = doMigrateInstance (&meta, instanceId, &migrateState, &previousState);
+        int error = doMigrateInstance (&meta,
+                                       instanceId,
+                                       migrationNode,
+                                       migrationURI,
+                                       &migrateState,
+                                       &previousState);
     
         if (error) {
             logprintfl (EUCAERROR, "ERROR: doMigrateInstance() failed error=%d\n", error);

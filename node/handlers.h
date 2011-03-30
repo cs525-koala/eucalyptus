@@ -166,7 +166,9 @@ struct handlers {
     int (*doMigrateInstance)	(struct nc_state_t *nc,
 		    		ncMetadata *meta,
 				char *instanceId,
-				int *shutdownState,
+        char *migrationNode,
+        char *migrationURI,
+				int *migrateState,
 				int *previousState);
     int (*doRebootInstance)	(struct nc_state_t *nc,
 		    		ncMetadata *meta,
@@ -206,7 +208,7 @@ int doDescribeInstances		(ncMetadata *meta, char **instIds, int instIdsLen, ncIn
 int doRunInstance		(ncMetadata *meta, char *instanceId, char *reservationId, virtualMachine *params, char *imageId, char *imageURL, char *kernelId, char *kernelURL, char *ramdiskId, char *ramdiskURL, char *keyName, netConfig *netparams, char *userData, char *launchIndex, char **groupNames, int groupNamesSize, ncInstance **outInst);
 int doReceiveMigrationInstance		(ncMetadata *meta, char *instanceId, char *reservationId, virtualMachine *params, char *imageId, char *imageURL, char *kernelId, char *kernelURL, char *ramdiskId, char *ramdiskURL, char *keyName, netConfig *netparams, char *userData, char *launchIndex, char **groupNames, int groupNamesSize, ncInstance **outInst, int * listening_port);
 int doTerminateInstance		(ncMetadata *meta, char *instanceId, int *shutdownState, int *previousState);
-int doMigrateInstance		(ncMetadata *meta, char *instanceId, int *shutdownState, int *previousState);
+int doMigrateInstance		(ncMetadata *meta, char *instanceId, char *migrationNode, char *migrationURI, int *migrateState, int *previousState);
 int doRebootInstance		(ncMetadata *meta, char *instanceId);
 int doGetConsoleOutput		(ncMetadata *meta, char *instanceId, char **consoleOutput);
 int doDescribeResource		(ncMetadata *meta, char *resourceType, ncResource **outRes);

@@ -88,6 +88,8 @@ void usage (void)
              "\t\t-w [host:port] \t- Walrus endpoint\n"
              "\t\t-n [host:port] \t- NC endpoint\n"
              "\t\t-i [str] \t- instance ID\n"
+             "\t\t-o [str] \t- migration target node\n"
+             "\t\t-u [str] \t- migration URI\n"
              "\t\t-e [str] \t- reservation ID\n"
              "\t\t-m [id:path] \t- id and manifest path of disk image\n"
              "\t\t-k [id:path] \t- id and manifest path of kernel image\n"
@@ -113,6 +115,8 @@ int main (int argc, char **argv)
 	char * nc_hostport = DEFAULT_NC_HOSTPORT;
     char * walrus_hostport = DEFAULT_WALRUS_HOSTPORT;
     char * instance_id = NULL;
+    char * migration_node = NULL;
+    char * migration_uri = NULL;
     char * image_id = NULL;
     char * image_manifest = NULL;
     char * kernel_id = NULL;
@@ -133,7 +137,7 @@ int main (int argc, char **argv)
     int count = 1;
 	int ch;
     
-	while ((ch = getopt(argc, argv, "hdn:w:i:m:k:r:e:a:c:h:V:R:L:FU:I:G:")) != -1) {
+	while ((ch = getopt(argc, argv, "hdn:w:i:o:u:m:k:r:e:a:c:h:V:R:L:FU:I:G:")) != -1) {
 		switch (ch) {
         case 'c':
             count = atoi (optarg);
@@ -149,6 +153,12 @@ int main (int argc, char **argv)
             break;
         case 'i':
             instance_id = optarg; 
+            break;
+        case 'o':
+            migration_node = optarg; 
+            break;
+        case 'u':
+            migration_uri = optarg;
             break;
         case 'm':
             image_id = strtok (optarg, ":");
@@ -388,14 +398,16 @@ int main (int argc, char **argv)
     } else if (!strcmp(command, "migrateInstance")) {
         // XXX: Make this make sense; this is presently just a copy of terminate
         CHECK_PARAM(instance_id, "instance ID");
+        CHECK_PARAM(migration_node, "migration Node");
+        CHECK_PARAM(migration_uri, "migration URI");
 
-        int shutdownState, previousState;
-        int rc = ncMigrateInstanceStub (stub, &meta, instance_id, &shutdownState, &previousState);
+        int migrateState, previousState;
+        int rc = ncMigrateInstanceStub (stub, &meta, instance_id, migration_node, migration_uri, &migrateState, &previousState);
         if (rc != 0) {
             printf("ncMigrateInstance() failed: error=%d\n", rc);
             exit(1);
         }
-        printf("shutdownState=%d, previousState=%d\n", shutdownState, previousState);
+        printf("migrateState=%d, previousState=%d\n", migrateState, previousState);
 
         /***********************************************************/
     } else if (!strcmp(command, "receiveMigrationInstance")) {

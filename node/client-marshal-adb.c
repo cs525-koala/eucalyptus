@@ -505,7 +505,8 @@ int ncTerminateInstanceStub (ncStub *st, ncMetadata *meta, char *instId, int *sh
     return status;
 }
 
-int ncMigrateInstanceStub (ncStub *st, ncMetadata *meta, char *instId, int *shutdownState, int *previousState)
+int ncMigrateInstanceStub (ncStub *st, ncMetadata *meta, char *instId, char *migrationNode,
+                           char *migrationURI, int *migrateState, int *previousState)
 {
     axutil_env_t * env = st->env;
     axis2_stub_t * stub = st->stub;
@@ -520,6 +521,8 @@ int ncMigrateInstanceStub (ncStub *st, ncMetadata *meta, char *instId, int *shut
         adb_ncMigrateInstanceType_set_userId(request, env, meta->userId);
     }
     adb_ncMigrateInstanceType_set_instanceId(request, env, instId);
+    adb_ncMigrateInstanceType_set_migrationNode(request, env, migrationNode);
+    adb_ncMigrateInstanceType_set_migrationURI(request, env, migrationURI);
     adb_ncMigrateInstance_set_ncMigrateInstance(input, env, request);
 
     int status = 0;
@@ -541,7 +544,7 @@ int ncMigrateInstanceStub (ncStub *st, ncMetadata *meta, char *instId, int *shut
             }
 
             /* TODO: fix the state char->int conversion */
-            * shutdownState = 0; //strdup(adb_ncMigrateInstanceResponseType_get_shutdownState(response, env));
+            * migrateState = 0; //strdup(adb_ncMigrateInstanceResponseType_get_shutdownState(response, env));
             * previousState = 0; //strdup(adb_ncMigrateInstanceResponseType_get_previousState(response, env));
         }
     }

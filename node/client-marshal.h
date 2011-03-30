@@ -79,7 +79,7 @@ int ncReceiveMigrationInstanceStub (ncStub *st, ncMetadata *meta, char *instance
 int ncGetConsoleOutputStub (ncStub *stub, ncMetadata *meta, char *instanceId, char **consoleOutput);
 int ncRebootInstanceStub (ncStub *stub, ncMetadata *meta, char *instanceId);
 int ncTerminateInstanceStub (ncStub *stub, ncMetadata *meta, char *instanceId, int *shutdownState, int *previousState);
-int ncMigrateInstanceStub (ncStub *stub, ncMetadata *meta, char *instanceId, int *shutdownState, int *previousState);
+int ncMigrateInstanceStub (ncStub *stub, ncMetadata *meta, char *instanceId, char *migrationNode, char *migrationURI, int *migrateState, int *previousState);
 int ncDescribeInstancesStub (ncStub *stub, ncMetadata *meta, char **instIds, int instIdsLen, ncInstance ***outInsts, int *outInstsLen);
 int ncDescribeResourceStub  (ncStub *stub, ncMetadata *meta, char *resourceType, ncResource **outRes);
 int ncStartNetworkStub  (ncStub *stub, ncMetadata *meta, char **peers, int peersLen, int port, int vlan, char **outStatus);

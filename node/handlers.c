@@ -1096,7 +1096,7 @@ int doReceiveMigrationInstance (ncMetadata *meta, char *instanceId, char *reserv
 	return ret;
 }
 
-int doMigrateInstance (ncMetadata *meta, char *instanceId, int *shutdownState, int *previousState)
+int doMigrateInstance (ncMetadata *meta, char *instanceId, char * migrationNode, char * migrationURI, int *migrateState, int *previousState)
 {
 	int ret; 
 
@@ -1106,9 +1106,9 @@ int doMigrateInstance (ncMetadata *meta, char *instanceId, int *shutdownState, i
 	logprintfl (EUCAINFO, "doMigrateInstance() invoked (id=%s)\n", instanceId);
 
 	if (nc_state.H->doMigrateInstance) 
-		ret = nc_state.H->doMigrateInstance(&nc_state, meta, instanceId, shutdownState, previousState);
+		ret = nc_state.H->doMigrateInstance(&nc_state, meta, instanceId, migrationNode, migrationURI, migrateState, previousState);
 	else 
-		ret = nc_state.D->doMigrateInstance(&nc_state, meta, instanceId, shutdownState, previousState);
+		ret = nc_state.D->doMigrateInstance(&nc_state, meta, instanceId, migrationNode, migrationURI, migrateState, previousState);
 
 	return ret;
 }
