@@ -160,6 +160,12 @@ typedef enum instance_states_t { // these must match instance_sate_names[] below
     TOTAL_STATES
 } instance_states;
 
+typedef enum migration_states_t {
+    NO_MIGRATION,
+    SEND_MIGRATION,
+    RECIEVE_MIGRATION
+} migration_states;
+
 static char * instance_state_names[] = {
     "Unknown",
     "Running",
