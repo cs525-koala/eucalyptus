@@ -312,6 +312,11 @@
 
         <!-- unused in NC, used by CC -->
 	    <xs:element minOccurs="0" name="serviceTag" type="xs:string"/> 
+
+      <!-- Used in migration calls -->
+	    <xs:element minOccurs="0" name="listening_port" type="xs:int"/> 
+	    <xs:element minOccurs="0" name="migration_node" type="xs:string"/> 
+	    <xs:element minOccurs="0" name="migration_uri" type="xs:string"/> 
       </xs:sequence>
     </xs:complexType>
     
