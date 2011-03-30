@@ -144,6 +144,29 @@ struct handlers {
 				char *instanceId,
 				int *shutdownState,
 				int *previousState);
+    int (*doReceiveMigrationInstance)	(struct nc_state_t *nc,
+		    		ncMetadata *meta,
+				char *instanceId,
+				char *reservationId,
+				virtualMachine *params,
+				char *imageId,
+				char *imageURL,
+				char *kernelId,
+				char *kernelURL,
+				char *ramdiskId,
+				char *ramdiskURL,
+				char *keyName,
+				netConfig *netparams,
+				char *userData,
+				char *launchIndex,
+				char **groupNames,
+				int groupNamesSize,
+				ncInstance **outInst);
+    int (*doMigrateInstance)	(struct nc_state_t *nc,
+		    		ncMetadata *meta,
+				char *instanceId,
+				int *shutdownState,
+				int *previousState);
     int (*doRebootInstance)	(struct nc_state_t *nc,
 		    		ncMetadata *meta,
 				char *instanceId);
@@ -180,7 +203,9 @@ struct handlers {
 int doPowerDown			(ncMetadata *meta);
 int doDescribeInstances		(ncMetadata *meta, char **instIds, int instIdsLen, ncInstance ***outInsts, int *outInstsLen);
 int doRunInstance		(ncMetadata *meta, char *instanceId, char *reservationId, virtualMachine *params, char *imageId, char *imageURL, char *kernelId, char *kernelURL, char *ramdiskId, char *ramdiskURL, char *keyName, netConfig *netparams, char *userData, char *launchIndex, char **groupNames, int groupNamesSize, ncInstance **outInst);
+int doReceiveMigrationInstance		(ncMetadata *meta, char *instanceId, char *reservationId, virtualMachine *params, char *imageId, char *imageURL, char *kernelId, char *kernelURL, char *ramdiskId, char *ramdiskURL, char *keyName, netConfig *netparams, char *userData, char *launchIndex, char **groupNames, int groupNamesSize, ncInstance **outInst);
 int doTerminateInstance		(ncMetadata *meta, char *instanceId, int *shutdownState, int *previousState);
+int doMigrateInstance		(ncMetadata *meta, char *instanceId, int *shutdownState, int *previousState);
 int doRebootInstance		(ncMetadata *meta, char *instanceId);
 int doGetConsoleOutput		(ncMetadata *meta, char *instanceId, char **consoleOutput);
 int doDescribeResource		(ncMetadata *meta, char *resourceType, ncResource **outRes);

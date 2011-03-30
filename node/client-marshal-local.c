@@ -89,10 +89,21 @@ int ncRunInstanceStub (ncStub *st, ncMetadata *meta, char *instanceId, char *res
   return doRunInstance (meta, instanceId, reservationId, params, imageId, imageURL, kernelId, kernelURL, ramdiskId, ramdiskURL, keyName, netparams, userData, launchIndex, groupNames, groupNamesSize, outInstPtr);
 }
 
+int ncReceiveMigrationInstanceStub (ncStub *st, ncMetadata *meta, char *instanceId, char *reservationId, virtualMachine *params, char *imageId, char *imageURL, char *kernelId, char *kernelURL, char *ramdiskId, char *ramdiskURL, char *keyName, netConfig *netparams, char *userData, char *launchIndex, char **groupNames, int groupNamesSize, ncInstance **outInstPtr)
+{
+  return doReceiveMigrationInstance (meta, instanceId, reservationId, params, imageId, imageURL, kernelId, kernelURL, ramdiskId, ramdiskURL, keyName, netparams, userData, launchIndex, groupNames, groupNamesSize, outInstPtr);
+}
+
 int ncTerminateInstanceStub (ncStub *st, ncMetadata *meta, char *instanceId, int *shutdownState, int *previousState)
 {
     return doTerminateInstance (meta, instanceId, shutdownState, previousState);
 }
+
+int ncMigrateInstanceStub (ncStub *st, ncMetadata *meta, char *instanceId, int *shutdownState, int *previousState)
+{
+    return doMigrateInstance (meta, instanceId, shutdownState, previousState);
+}
+
 int ncPowerDownStub (ncStub *st, ncMetadata *meta){
   return(0);
 }

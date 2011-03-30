@@ -1065,6 +1065,54 @@ int doTerminateInstance (ncMetadata *meta, char *instanceId, int *shutdownState,
 	return ret;
 }
 
+int doReceiveMigrationInstance (ncMetadata *meta, char *instanceId, char *reservationId, virtualMachine *params, char *imageId, char *imageURL, char *kernelId, char *kernelURL, char *ramdiskId, char *ramdiskURL, char *keyName, netConfig *netparams, char *userData, char *launchIndex, char **groupNames, int groupNamesSize, ncInstance **outInst)
+{
+	int ret;
+
+	if (init())
+		return 1;
+
+	logprintfl (EUCAINFO, "doReceiveMigrationInstance() invoked (id=%s cores=%d disk=%d memory=%d)\n", instanceId, params->cores, params->disk, params->mem);
+	logprintfl (EUCAINFO, "                         image=%s at %s\n", imageId, imageURL);
+	if (kernelId && kernelURL)
+	  logprintfl (EUCAINFO, "                         krnel=%s at %s\n", kernelId, kernelURL);
+	if (ramdiskId && ramdiskURL)
+	  logprintfl (EUCAINFO, "                         rmdsk=%s at %s\n", ramdiskId, ramdiskURL);
+	logprintfl (EUCAINFO, "                         vlan=%d priMAC=%s privIp=%s\n", netparams->vlan, netparams->privateMac, netparams->privateIp);
+
+	int i;
+	for (i=0; i<EUCA_MAX_DEVMAPS; i++) {
+	  deviceMapping * dm = &(params->deviceMapping[i]);
+	  if (strlen(dm->deviceName)>0) {
+	    logprintfl (EUCAINFO, "                         device mapping: %s=%s size=%d format=%s\n", dm->deviceName, dm->virtualName, dm->size, dm->format);
+	  }
+	}
+
+	if (nc_state.H->doReceiveMigrationInstance)
+ 	  ret = nc_state.H->doReceiveMigrationInstance (&nc_state, meta, instanceId, reservationId, params, imageId, imageURL, kernelId, kernelURL, ramdiskId, ramdiskURL, keyName, netparams, userData, launchIndex, groupNames, groupNamesSize, outInst);
+	else
+	  ret = nc_state.D->doReceiveMigrationInstance (&nc_state, meta, instanceId, reservationId, params, imageId, imageURL, kernelId, kernelURL, ramdiskId, ramdiskURL, keyName, netparams, userData, launchIndex, groupNames, groupNamesSize, outInst);
+
+	return ret;
+}
+
+int doMigrateInstance (ncMetadata *meta, char *instanceId, int *shutdownState, int *previousState)
+{
+	int ret; 
+
+	if (init())
+		return 1;
+
+	logprintfl (EUCAINFO, "doMigrateInstance() invoked (id=%s)\n", instanceId);
+
+	if (nc_state.H->doMigrateInstance) 
+		ret = nc_state.H->doMigrateInstance(&nc_state, meta, instanceId, shutdownState, previousState);
+	else 
+		ret = nc_state.D->doMigrateInstance(&nc_state, meta, instanceId, shutdownState, previousState);
+
+	return ret;
+}
+
 int doRebootInstance (ncMetadata *meta, char *instanceId) 
 {
 	int ret;

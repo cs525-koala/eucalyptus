@@ -385,6 +385,87 @@ int main (int argc, char **argv)
         printf("shutdownState=%d, previousState=%d\n", shutdownState, previousState);
 
         /***********************************************************/
+    } else if (!strcmp(command, "migrateInstances")) {
+        // XXX: Make this make sense; this is presently just a copy of terminate
+        CHECK_PARAM(instance_id, "instance ID");
+
+        int shutdownState, previousState;
+        int rc = ncMigrateInstanceStub (stub, &meta, instance_id, &shutdownState, &previousState);
+        if (rc != 0) {
+            printf("ncMigrateInstance() failed: error=%d\n", rc);
+            exit(1);
+        }
+        printf("shutdownState=%d, previousState=%d\n", shutdownState, previousState);
+
+        /***********************************************************/
+    } else if (!strcmp(command, "receiveMigrationInstances")) {
+        // XXX: Make this make sense; this is presently just a copy of run
+        // It also does way more than we probably want, even while testing...
+        // (We can always add functionality, for now simple is probably best)
+
+        CHECK_PARAM(image_id, "image ID and manifest path");
+        CHECK_PARAM(kernel_id, "kernel ID and manifest path");
+
+        char *privMac, *pubMac, *privIp;
+        int vlan = 3;
+        privMac = strdup (mac_addr);
+        mac_addr [0] = 'b';
+        mac_addr [1] = 'b';
+        privIp = strdup("10.0.0.202");
+
+        /* generate random IDs if they weren't specified*/
+#define C rand()%26 + 97
+
+        while (count--) {
+            char * iid, * rid;
+
+            char ibuf [8];
+            if (instance_id==NULL || count>1) {
+                snprintf (ibuf, 8, "i-%c%c%c%c%c", C, C, C, C, C);
+                iid = ibuf;
+            } else {
+                iid = instance_id;
+            }
+
+            char rbuf [8];
+            if (reservation_id==NULL || count>1) {
+                snprintf (rbuf, 8, "r-%c%c%c%c%c", C, C, C, C, C);
+                rid = rbuf;
+            } else {
+                rid = reservation_id;
+            }
+
+            netConfig netparams;
+            ncInstance * outInst;
+            netparams.vlan = vlan;
+            snprintf(netparams.privateIp, 24, "%s", privIp);
+            snprintf(netparams.privateMac, 24, "%s", privMac);
+
+            int rc = ncReceiveMigrationInstanceStub(stub, &meta,
+                    iid, rid,
+                    &params,
+                    image_id, image_url,
+                    kernel_id, kernel_url,
+                    ramdisk_id, ramdisk_url,
+                    "", /* key */
+                    &netparams,
+                    // privMac, privIp, vlan,
+                    user_data, launch_index, group_names, group_names_size, /* CC stuff */
+                    &outInst);
+            if (rc != 0) {
+                printf("ncReceiveMigrationInstance() failed: instanceId=%s error=%d\n", instance_id, rc);
+                exit(1);
+            }
+            // count device mappings
+            int i, count=0;
+            for (i=0; i<EUCA_MAX_DEVMAPS; i++) {
+                if (strlen(outInst->params.deviceMapping[i].deviceName)>0) count++;
+            }
+            printf("instanceId=%s stateCode=%d stateName=%s deviceMappings=%d\n", outInst->instanceId, outInst->stateCode, outInst->stateName, count);
+            free_instance(&outInst);
+        }
+
+        /***********************************************************/
     } else if (!strcmp(command, "describeInstances")) {
         /* TODO: pull out of argv[] requested instanceIDs */
         ncInstance ** outInsts;

@@ -312,6 +312,74 @@ int ncRunInstanceStub (ncStub *st, ncMetadata *meta, char *instanceId, char *res
     return status;
 }
 
+int ncReceiveMigrationInstanceStub (ncStub *st, ncMetadata *meta, char *instanceId, char *reservationId, virtualMachine *params, char *imageId, char *imageURL, char *kernelId, char *kernelURL, char *ramdiskId, char *ramdiskURL, char *keyName, netConfig *netparams, char *userData, char *launchIndex, char **groupNames, int groupNamesSize, ncInstance **outInstPtr)
+{
+    int i;
+    axutil_env_t * env = st->env;
+    axis2_stub_t * stub = st->stub;
+    adb_ncReceiveMigrationInstance_t     * input   = adb_ncReceiveMigrationInstance_create(env); 
+    adb_ncReceiveMigrationInstanceType_t * request = adb_ncReceiveMigrationInstanceType_create(env);
+
+    // set standard input fields
+    adb_ncReceiveMigrationInstanceType_set_nodeName(request, env, st->node_name);
+    if (meta) {
+        adb_ncReceiveMigrationInstanceType_set_correlationId(request, env, CORRELATION_ID);
+        adb_ncReceiveMigrationInstanceType_set_userId(request, env, meta->userId);
+    }
+
+    // set op-specific input fields
+    adb_ncReceiveMigrationInstanceType_set_instanceId(request, env, instanceId);
+    adb_ncReceiveMigrationInstanceType_set_reservationId(request, env, reservationId);
+    adb_ncReceiveMigrationInstanceType_set_instanceType(request, env, copy_vm_type_to_adb(env, params));
+
+    adb_ncReceiveMigrationInstanceType_set_imageId(request, env, imageId);
+    adb_ncReceiveMigrationInstanceType_set_imageURL(request, env, imageURL);
+    adb_ncReceiveMigrationInstanceType_set_kernelId(request, env, kernelId);
+    adb_ncReceiveMigrationInstanceType_set_kernelURL(request, env, kernelURL);
+    adb_ncReceiveMigrationInstanceType_set_ramdiskId(request, env, ramdiskId);
+    adb_ncReceiveMigrationInstanceType_set_ramdiskURL(request, env, ramdiskURL);
+    adb_ncReceiveMigrationInstanceType_set_keyName(request, env, keyName);
+    adb_netConfigType_t *netConfig = adb_netConfigType_create(env);
+    adb_netConfigType_set_privateMacAddress(netConfig, env, netparams->privateMac);
+    adb_netConfigType_set_privateIp(netConfig, env, netparams->privateIp);
+    adb_netConfigType_set_publicIp(netConfig, env, netparams->publicIp);
+    adb_netConfigType_set_vlan(netConfig, env, netparams->vlan);
+    adb_netConfigType_set_networkIndex(netConfig, env, netparams->networkIndex);
+    adb_ncReceiveMigrationInstanceType_set_netParams(request, env, netConfig);
+    //    adb_ncReceiveMigrationInstanceType_set_privateMacAddress(request, env, privMac);
+    //    adb_ncReceiveMigrationInstanceType_set_privateIp(request, env, privIp);
+    //    adb_ncReceiveMigrationInstanceType_set_vlan(request, env, vlan);
+    adb_ncReceiveMigrationInstanceType_set_userData(request, env, userData);
+    adb_ncReceiveMigrationInstanceType_set_launchIndex(request, env, launchIndex);
+    for (i=0; i<groupNamesSize; i++) {
+        adb_ncReceiveMigrationInstanceType_add_groupNames(request, env, groupNames[i]);
+    }
+
+    adb_ncReceiveMigrationInstance_set_ncReceiveMigrationInstance(input, env, request);
+
+    int status = 0;
+    { // do it
+        adb_ncReceiveMigrationInstanceResponse_t * output = axis2_stub_op_EucalyptusNC_ncReceiveMigrationInstance(stub, env, input);
+
+        if (!output) {
+            logprintfl (EUCAERROR, "ERROR: ReceiveMigrationInstance" NULL_ERROR_MSG);
+            status = -1;
+
+        } else {
+            adb_ncReceiveMigrationInstanceResponseType_t * response = adb_ncReceiveMigrationInstanceResponse_get_ncReceiveMigrationInstanceResponse(output, env);
+            if ( adb_ncReceiveMigrationInstanceResponseType_get_return(response, env) == AXIS2_FALSE ) {
+                logprintfl (EUCAERROR, "ERROR: ReceiveMigrationInstance returned an error\n");
+                status = 1;
+            }
+
+            adb_instanceType_t * instance = adb_ncReceiveMigrationInstanceResponseType_get_instance(response, env);
+            * outInstPtr = copy_instance_from_adb (instance, env);
+        }
+    }
+
+    return status;
+}
+
 int ncGetConsoleOutputStub (ncStub *st, ncMetadata *meta, char *instanceId, char **consoleOutput) 
 {
     axutil_env_t * env = st->env;
@@ -433,6 +501,50 @@ int ncTerminateInstanceStub (ncStub *st, ncMetadata *meta, char *instId, int *sh
         }
     }
     
+    return status;
+}
+
+int ncMigrateInstanceStub (ncStub *st, ncMetadata *meta, char *instId, int *shutdownState, int *previousState)
+{
+    axutil_env_t * env = st->env;
+    axis2_stub_t * stub = st->stub;
+
+    adb_ncMigrateInstance_t     * input   = adb_ncMigrateInstance_create(env); 
+    adb_ncMigrateInstanceType_t * request = adb_ncMigrateInstanceType_create(env);
+
+    /* set input fields */
+    adb_ncMigrateInstanceType_set_nodeName(request, env, st->node_name);
+    if (meta) {
+        adb_ncMigrateInstanceType_set_correlationId(request, env, CORRELATION_ID);
+        adb_ncMigrateInstanceType_set_userId(request, env, meta->userId);
+    }
+    adb_ncMigrateInstanceType_set_instanceId(request, env, instId);
+    adb_ncMigrateInstance_set_ncMigrateInstance(input, env, request);
+
+    int status = 0;
+    { // do it
+        adb_ncMigrateInstanceResponse_t * output = axis2_stub_op_EucalyptusNC_ncMigrateInstance(stub, env, input);
+
+        if (!output) {
+            logprintfl (EUCAERROR, "ERROR: MigrateInstance" NULL_ERROR_MSG);
+            status = -1;
+
+        } else {
+            adb_ncMigrateInstanceResponseType_t * response;
+
+            response = adb_ncMigrateInstanceResponse_get_ncMigrateInstanceResponse(output, env);
+            if ( adb_ncMigrateInstanceResponseType_get_return(response, env) == AXIS2_FALSE ) {
+                // suppress error message because we conservatively call Terminate on all nodes
+                //logprintfl (EUCAERROR, "ERROR: TerminateInsance returned an error\n");
+                status = 1;
+            }
+
+            /* TODO: fix the state char->int conversion */
+            * shutdownState = 0; //strdup(adb_ncMigrateInstanceResponseType_get_shutdownState(response, env));
+            * previousState = 0; //strdup(adb_ncMigrateInstanceResponseType_get_previousState(response, env));
+        }
+    }
+
     return status;
 }
 
