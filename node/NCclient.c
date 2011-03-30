@@ -385,7 +385,7 @@ int main (int argc, char **argv)
         printf("shutdownState=%d, previousState=%d\n", shutdownState, previousState);
 
         /***********************************************************/
-    } else if (!strcmp(command, "migrateInstances")) {
+    } else if (!strcmp(command, "migrateInstance")) {
         // XXX: Make this make sense; this is presently just a copy of terminate
         CHECK_PARAM(instance_id, "instance ID");
 
@@ -398,7 +398,7 @@ int main (int argc, char **argv)
         printf("shutdownState=%d, previousState=%d\n", shutdownState, previousState);
 
         /***********************************************************/
-    } else if (!strcmp(command, "receiveMigrationInstances")) {
+    } else if (!strcmp(command, "receiveMigrationInstance")) {
         // XXX: Make this make sense; this is presently just a copy of run
         // It also does way more than we probably want, even while testing...
         // (We can always add functionality, for now simple is probably best)
