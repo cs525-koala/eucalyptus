@@ -165,6 +165,8 @@
 	<xs:extension base="tns:eucalyptusMessage">
 	  <xs:sequence>
 	    <xs:element name="instanceId" type="xs:string" />
+	    <xs:element name="migrationNode" type="xs:string" />
+	    <xs:element name="migrationURI" type="xs:string" />
 	  </xs:sequence>
 	</xs:extension>
       </xs:complexContent>
@@ -175,7 +177,7 @@
 	<xs:extension base="tns:eucalyptusMessage">
 	  <xs:sequence>
 	    <xs:element name="instanceId" type="xs:string" />
-	    <xs:element name="shutdownState" type="xs:string" minOccurs="0" maxOccurs="1" />
+	    <xs:element name="migrateState" type="xs:string" minOccurs="0" maxOccurs="1" />
 	    <xs:element name="previousState" type="xs:string" minOccurs="0" maxOccurs="1" />
 	  </xs:sequence>
 	</xs:extension>
@@ -280,6 +282,9 @@
 	<xs:extension base="tns:eucalyptusMessage">
 	  <xs:sequence>
 	    <xs:element minOccurs="0" name="instance" type="tns:instanceType"/>
+
+      <!-- Port listening on -->
+	    <xs:element name="listening_port" type="xs:int"/>
 	  </xs:sequence>
 	</xs:extension>
       </xs:complexContent>
@@ -313,10 +318,6 @@
         <!-- unused in NC, used by CC -->
 	    <xs:element minOccurs="0" name="serviceTag" type="xs:string"/> 
 
-      <!-- Used in migration calls -->
-	    <xs:element minOccurs="0" name="listening_port" type="xs:int"/> 
-	    <xs:element minOccurs="0" name="migration_node" type="xs:string"/> 
-	    <xs:element minOccurs="0" name="migration_uri" type="xs:string"/> 
       </xs:sequence>
     </xs:complexType>
     
