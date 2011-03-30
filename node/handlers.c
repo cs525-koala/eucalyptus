@@ -1103,7 +1103,7 @@ int doMigrateInstance (ncMetadata *meta, char *instanceId, char * migrationNode,
 	if (init())
 		return 1;
 
-	logprintfl (EUCAINFO, "doMigrateInstance() invoked (id=%s)\n", instanceId);
+	logprintfl (EUCAINFO, "doMigrateInstance() invoked (id=%s,target=%s,uri=%s)\n", instanceId, migrationNode, migrationURI);
 
 	if (nc_state.H->doMigrateInstance) 
 		ret = nc_state.H->doMigrateInstance(&nc_state, meta, instanceId, migrationNode, migrationURI, migrateState, previousState);
