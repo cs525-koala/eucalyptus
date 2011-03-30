@@ -157,10 +157,14 @@ typedef enum instance_states_t { // these must match instance_sate_names[] below
     EXTANT,   /* guest OS booting, running, shutting down, cleaning up state */
     TEARDOWN, /* a marker for a terminated domain, one not taking up resources */
 
+    /* external migration state */
+    EX_SEND_MIGRATION,
+    EX_RECIEVE_MIGRATION,
     TOTAL_STATES
 } instance_states;
 
 typedef enum migration_states_t {
+    /* internal migration state */
     NO_MIGRATION,
     SEND_MIGRATION,
     RECIEVE_MIGRATION
@@ -179,12 +183,14 @@ static char * instance_state_names[] = {
     "Booting",
     "Canceled",
 
-	"Bundling-Shutdown",
+    "Bundling-Shutdown",
     "Bundling-Shutoff",
 
     "Pending",
     "Extant",
-    "Teardown"
+    "Teardown",
+    "Send-Migration",
+    "Recieve-Migration"
 };
 
 typedef enum bundling_progress_t {
