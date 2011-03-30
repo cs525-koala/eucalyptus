@@ -231,7 +231,7 @@ doMigrateInstance(	struct nc_state_t *nc,
 			int *shutdownState,
 			int *previousState)
 {
-	logprintfl(EUCAERROR, "no default for doRunInstance!\n");
+	logprintfl(EUCAERROR, "no default for doMigrateInstance!\n");
 	return ERROR_FATAL;
 }
 
