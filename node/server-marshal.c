@@ -426,6 +426,7 @@ adb_ncReceiveMigrationInstanceResponse_t* ncReceiveMigrationInstanceMarshal (adb
         { // do it
             ncMetadata meta = { correlationId, userId };
             ncInstance * outInst;
+            int listening_port;
             
             int error = doReceiveMigrationInstance (&meta, instanceId, reservationId, &params, 
                                        imageId, imageURL, 
@@ -434,7 +435,8 @@ adb_ncReceiveMigrationInstanceResponse_t* ncReceiveMigrationInstanceMarshal (adb
                                        keyName, 
                                        &netparams, 
                                        userData, launchIndex, groupNames, groupNamesSize,
-                                       &outInst);
+                                       &outInst,
+                                       &listening_port);
             
             if (error) {
                 logprintfl (EUCAERROR, "ERROR: doReceiveMigrationInstance() failed error=%d\n", error);
@@ -452,6 +454,8 @@ adb_ncReceiveMigrationInstanceResponse_t* ncReceiveMigrationInstanceMarshal (adb
                 
                 // TODO: should we free_instance(&outInst) here or not? currently you don't have to
                 adb_ncReceiveMigrationInstanceResponseType_set_instance(output, env, instance);
+
+                adb_ncReceiveMigrationInstanceResponseType_set_listening_port(output, env, listening_port);
             }
             
             if (groupNamesSize)
@@ -687,9 +691,9 @@ adb_ncMigrateInstanceResponse_t* ncMigrateInstanceMarshal (adb_ncMigrateInstance
     eventlog("NC", userId, correlationId, "MigrateInstance", "begin");
     { // do it
         ncMetadata meta = { correlationId, userId };
-        int shutdownState, previousState;
+        int migrateState, previousState;
 
-        int error = doMigrateInstance (&meta, instanceId, &shutdownState, &previousState);
+        int error = doMigrateInstance (&meta, instanceId, &migrateState, &previousState);
     
         if (error) {
             logprintfl (EUCAERROR, "ERROR: doMigrateInstance() failed error=%d\n", error);
@@ -705,8 +709,8 @@ adb_ncMigrateInstanceResponse_t* ncMigrateInstanceMarshal (adb_ncMigrateInstance
             adb_ncMigrateInstanceResponseType_set_instanceId(output, env, instanceId);
             // TODO: change the WSDL to use the name/code pair
             char s[128];
-            snprintf (s, 128, "%d", shutdownState);
-            adb_ncMigrateInstanceResponseType_set_shutdownState(output, env, s);
+            snprintf (s, 128, "%d", migrateState);
+            adb_ncMigrateInstanceResponseType_set_migrateState(output, env, s);
             snprintf (s, 128, "%d", previousState);
             adb_ncMigrateInstanceResponseType_set_previousState(output, env, s);
 

@@ -437,6 +437,7 @@ int main (int argc, char **argv)
 
             netConfig netparams;
             ncInstance * outInst;
+            int listening_port;
             netparams.vlan = vlan;
             snprintf(netparams.privateIp, 24, "%s", privIp);
             snprintf(netparams.privateMac, 24, "%s", privMac);
@@ -451,7 +452,8 @@ int main (int argc, char **argv)
                     &netparams,
                     // privMac, privIp, vlan,
                     user_data, launch_index, group_names, group_names_size, /* CC stuff */
-                    &outInst);
+                    &outInst,
+                    &listening_port);
             if (rc != 0) {
                 printf("ncReceiveMigrationInstance() failed: instanceId=%s error=%d\n", instance_id, rc);
                 exit(1);
@@ -461,7 +463,7 @@ int main (int argc, char **argv)
             for (i=0; i<EUCA_MAX_DEVMAPS; i++) {
                 if (strlen(outInst->params.deviceMapping[i].deviceName)>0) count++;
             }
-            printf("instanceId=%s stateCode=%d stateName=%s deviceMappings=%d\n", outInst->instanceId, outInst->stateCode, outInst->stateName, count);
+            printf("instanceId=%s stateCode=%d stateName=%s deviceMappings=%d listening_port=%d\n", outInst->instanceId, outInst->stateCode, outInst->stateName, count, listening_port);
             free_instance(&outInst);
         }
 

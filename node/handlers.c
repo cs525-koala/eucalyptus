@@ -1065,7 +1065,7 @@ int doTerminateInstance (ncMetadata *meta, char *instanceId, int *shutdownState,
 	return ret;
 }
 
-int doReceiveMigrationInstance (ncMetadata *meta, char *instanceId, char *reservationId, virtualMachine *params, char *imageId, char *imageURL, char *kernelId, char *kernelURL, char *ramdiskId, char *ramdiskURL, char *keyName, netConfig *netparams, char *userData, char *launchIndex, char **groupNames, int groupNamesSize, ncInstance **outInst)
+int doReceiveMigrationInstance (ncMetadata *meta, char *instanceId, char *reservationId, virtualMachine *params, char *imageId, char *imageURL, char *kernelId, char *kernelURL, char *ramdiskId, char *ramdiskURL, char *keyName, netConfig *netparams, char *userData, char *launchIndex, char **groupNames, int groupNamesSize, ncInstance **outInst, int * listening_port)
 {
 	int ret;
 
@@ -1089,9 +1089,9 @@ int doReceiveMigrationInstance (ncMetadata *meta, char *instanceId, char *reserv
 	}
 
 	if (nc_state.H->doReceiveMigrationInstance)
- 	  ret = nc_state.H->doReceiveMigrationInstance (&nc_state, meta, instanceId, reservationId, params, imageId, imageURL, kernelId, kernelURL, ramdiskId, ramdiskURL, keyName, netparams, userData, launchIndex, groupNames, groupNamesSize, outInst);
+ 	  ret = nc_state.H->doReceiveMigrationInstance (&nc_state, meta, instanceId, reservationId, params, imageId, imageURL, kernelId, kernelURL, ramdiskId, ramdiskURL, keyName, netparams, userData, launchIndex, groupNames, groupNamesSize, outInst, listening_port);
 	else
-	  ret = nc_state.D->doReceiveMigrationInstance (&nc_state, meta, instanceId, reservationId, params, imageId, imageURL, kernelId, kernelURL, ramdiskId, ramdiskURL, keyName, netparams, userData, launchIndex, groupNames, groupNamesSize, outInst);
+	  ret = nc_state.D->doReceiveMigrationInstance (&nc_state, meta, instanceId, reservationId, params, imageId, imageURL, kernelId, kernelURL, ramdiskId, ramdiskURL, keyName, netparams, userData, launchIndex, groupNames, groupNamesSize, outInst, listening_port);
 
 	return ret;
 }

@@ -312,7 +312,7 @@ int ncRunInstanceStub (ncStub *st, ncMetadata *meta, char *instanceId, char *res
     return status;
 }
 
-int ncReceiveMigrationInstanceStub (ncStub *st, ncMetadata *meta, char *instanceId, char *reservationId, virtualMachine *params, char *imageId, char *imageURL, char *kernelId, char *kernelURL, char *ramdiskId, char *ramdiskURL, char *keyName, netConfig *netparams, char *userData, char *launchIndex, char **groupNames, int groupNamesSize, ncInstance **outInstPtr)
+int ncReceiveMigrationInstanceStub (ncStub *st, ncMetadata *meta, char *instanceId, char *reservationId, virtualMachine *params, char *imageId, char *imageURL, char *kernelId, char *kernelURL, char *ramdiskId, char *ramdiskURL, char *keyName, netConfig *netparams, char *userData, char *launchIndex, char **groupNames, int groupNamesSize, ncInstance **outInstPtr, int * listening_port)
 {
     int i;
     axutil_env_t * env = st->env;
@@ -374,6 +374,7 @@ int ncReceiveMigrationInstanceStub (ncStub *st, ncMetadata *meta, char *instance
 
             adb_instanceType_t * instance = adb_ncReceiveMigrationInstanceResponseType_get_instance(response, env);
             * outInstPtr = copy_instance_from_adb (instance, env);
+            * listening_port = adb_ncReceiveMigrationInstanceResponseType_get_listening_port(response, env);
         }
     }
 

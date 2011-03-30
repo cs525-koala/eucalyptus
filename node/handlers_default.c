@@ -120,7 +120,7 @@ doReceiveMigrationInstance (	struct nc_state_t *nc, ncMetadata *meta, char *inst
 		char *keyName, 
 		netConfig *netparams,
 		char *userData, char *launchIndex,
-		char **groupNames, int groupNamesSize, ncInstance **outInst)
+		char **groupNames, int groupNamesSize, ncInstance **outInst, int * listening_port)
 {
 	logprintfl(EUCAERROR, "no default for doReceiveMigrationInstance!\n");
 	return ERROR_FATAL;
