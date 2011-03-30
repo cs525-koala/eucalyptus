@@ -112,6 +112,21 @@ doRunInstance (	struct nc_state_t *nc, ncMetadata *meta, char *instanceId,
 }
 
 static int
+doReceiveMigrationInstance (	struct nc_state_t *nc, ncMetadata *meta, char *instanceId,
+		char *reservationId, virtualMachine *params, 
+		char *imageId, char *imageURL, 
+		char *kernelId, char *kernelURL, 
+		char *ramdiskId, char *ramdiskURL, 
+		char *keyName, 
+		netConfig *netparams,
+		char *userData, char *launchIndex,
+		char **groupNames, int groupNamesSize, ncInstance **outInst)
+{
+	logprintfl(EUCAERROR, "no default for doReceiveMigrationInstance!\n");
+	return ERROR_FATAL;
+}
+
+static int
 doRebootInstance(struct nc_state_t *nc, ncMetadata *meta, char *instanceId) 
 {    
 	logprintfl(EUCAERROR, "no default for doRebootInstance!\n");
@@ -207,6 +222,17 @@ doTerminateInstance(	struct nc_state_t *nc,
 	*shutdownState = instance->stateCode;
 
 	return OK;
+}
+
+static int
+doMigrateInstance(	struct nc_state_t *nc,
+			ncMetadata *meta,
+			char *instanceId,
+			int *shutdownState,
+			int *previousState)
+{
+	logprintfl(EUCAERROR, "no default for doRunInstance!\n");
+	return ERROR_FATAL;
 }
 
 static int
@@ -403,5 +429,7 @@ struct handlers default_libvirt_handlers = {
     .doPowerDown         = doPowerDown,
     .doAttachVolume      = doAttachVolume,
     .doDetachVolume      = doDetachVolume,
+    .doReceiveMigrationInstance = doReceiveMigrationInstance,
+    .doMigrateInstance = doMigrateInstance
 };
 

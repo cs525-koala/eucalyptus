@@ -220,6 +220,25 @@ doRunInstance (	struct nc_state_t *nc,
 
 }
 
+static int
+doReceiveMigrationInstance (	struct nc_state_t *nc,
+		ncMetadata *meta,
+		char *instanceId,
+		char *reservationId, virtualMachine *params, 
+		char *imageId, char *imageURL, 
+		char *kernelId, char *kernelURL, 
+		char *ramdiskId, char *ramdiskURL, 
+		char *keyName, 
+		//		char *privMac, char *privIp, int vlan, 
+		netConfig *netparams,
+		char *userData, char *launchIndex, char **groupNames,
+		int groupNamesSize, ncInstance **outInst)
+{
+    logprintfl(EUCAERROR, "ReceiveMigration not implemented!\n");
+    return 0;
+
+}
+
 /* thread that does the actual reboot */
 static void * rebooting_thread (void *arg) 
 {
@@ -392,6 +411,17 @@ doGetConsoleOutput(	struct nc_state_t *nc,
   if (console_output) free(console_output);
 
   return(ret);
+}
+
+static int
+doMigrateInstance(	struct nc_state_t *nc,
+			ncMetadata *meta,
+			char *instanceId,
+			int *shutdownState,
+			int *previousState)
+{
+	logprintfl(EUCAERROR, "no default for doRunInstance!\n");
+	return ERROR_FATAL;
 }
 
 static int
@@ -626,6 +656,8 @@ struct handlers kvm_libvirt_handlers = {
     .doStartNetwork      = NULL,
     .doPowerDown         = NULL,
     .doAttachVolume      = doAttachVolume,
-    .doDetachVolume      = doDetachVolume
+    .doDetachVolume      = doDetachVolume,
+    .doReceiveMigrationInstance = doReceiveMigrationInstance,
+    .doMigrateInstance   = doMigrateInstance
 };
 

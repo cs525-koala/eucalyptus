@@ -373,6 +373,100 @@ adb_ncRunInstanceResponse_t* ncRunInstanceMarshal (adb_ncRunInstance_t* ncRunIns
     return response;
 }
 
+adb_ncReceiveMigrationInstanceResponse_t* ncReceiveMigrationInstanceMarshal (adb_ncReceiveMigrationInstance_t* ncReceiveMigrationInstance, const axutil_env_t *env)
+{
+    pthread_mutex_lock(&ncHandlerLock);
+    adb_ncReceiveMigrationInstanceType_t * input          = adb_ncReceiveMigrationInstance_get_ncReceiveMigrationInstance(ncReceiveMigrationInstance, env);
+    adb_ncReceiveMigrationInstanceResponse_t * response   = adb_ncReceiveMigrationInstanceResponse_create(env);
+    adb_ncReceiveMigrationInstanceResponseType_t * output = adb_ncReceiveMigrationInstanceResponseType_create(env);
+
+    // get standard fields from input
+    axis2_char_t * correlationId = adb_ncReceiveMigrationInstanceType_get_correlationId(input, env);
+    axis2_char_t * userId = adb_ncReceiveMigrationInstanceType_get_userId(input, env);
+
+    // get operation-specific fields from input
+    axis2_char_t * instanceId = adb_ncReceiveMigrationInstanceType_get_instanceId(input, env);
+    axis2_char_t * reservationId = adb_ncReceiveMigrationInstanceType_get_reservationId(input, env);
+    virtualMachine params;
+    copy_vm_type_from_adb (&params, adb_ncReceiveMigrationInstanceType_get_instanceType(input, env), env);
+    axis2_char_t * imageId = adb_ncReceiveMigrationInstanceType_get_imageId(input, env);
+    axis2_char_t * imageURL = adb_ncReceiveMigrationInstanceType_get_imageURL(input, env);
+    axis2_char_t * kernelId = adb_ncReceiveMigrationInstanceType_get_kernelId(input, env);
+    axis2_char_t * kernelURL = adb_ncReceiveMigrationInstanceType_get_kernelURL(input, env);
+    axis2_char_t * ramdiskId = adb_ncReceiveMigrationInstanceType_get_ramdiskId(input, env);
+    axis2_char_t * ramdiskURL = adb_ncReceiveMigrationInstanceType_get_ramdiskURL(input, env);
+    axis2_char_t * keyName = adb_ncReceiveMigrationInstanceType_get_keyName(input, env);
+    adb_netConfigType_t *net_type = adb_ncReceiveMigrationInstanceType_get_netParams(input, env);
+    netConfig netparams;
+    netparams.vlan = adb_netConfigType_get_vlan(net_type, env);
+    netparams.networkIndex = adb_netConfigType_get_networkIndex(net_type, env);
+    snprintf(netparams.privateMac, 24, "%s", adb_netConfigType_get_privateMacAddress(net_type, env));
+    snprintf(netparams.privateIp, 24, "%s", adb_netConfigType_get_privateIp(net_type, env));
+    snprintf(netparams.publicIp, 24, "%s", adb_netConfigType_get_publicIp(net_type, env));
+    axis2_char_t * userData = adb_ncReceiveMigrationInstanceType_get_userData(input, env);
+    axis2_char_t * launchIndex = adb_ncReceiveMigrationInstanceType_get_launchIndex(input, env);
+    int groupNamesSize = adb_ncReceiveMigrationInstanceType_sizeof_groupNames(input, env);
+    char ** groupNames = calloc (groupNamesSize, sizeof(char *));
+    if (groupNames==NULL) {
+        logprintfl (EUCAERROR, "ERROR: out of memory in ncReceiveMigrationInstancesMarshall()\n");
+        adb_ncReceiveMigrationInstanceResponseType_set_return(output, env, AXIS2_FALSE);
+
+    } else {
+        int i;
+        for (i=0; i<groupNamesSize; i++) {
+            groupNames[i] = adb_ncReceiveMigrationInstanceType_get_groupNames_at(input, env, i);
+        }
+    
+        { // log event
+            char other[256];
+            snprintf(other, 256, "begin,%s", reservationId);
+            eventlog("NC", userId, correlationId, "ReceiveMigrationInstance", other);
+        }
+        
+        { // do it
+            ncMetadata meta = { correlationId, userId };
+            ncInstance * outInst;
+            
+            int error = doReceiveMigrationInstance (&meta, instanceId, reservationId, &params, 
+                                       imageId, imageURL, 
+                                       kernelId, kernelURL, 
+                                       ramdiskId, ramdiskURL, 
+                                       keyName, 
+                                       &netparams, 
+                                       userData, launchIndex, groupNames, groupNamesSize,
+                                       &outInst);
+            
+            if (error) {
+                logprintfl (EUCAERROR, "ERROR: doReceiveMigrationInstance() failed error=%d\n", error);
+                adb_ncReceiveMigrationInstanceResponseType_set_return(output, env, AXIS2_FALSE);
+                
+            } else {
+                ///// set standard fields in output
+                adb_ncReceiveMigrationInstanceResponseType_set_return(output, env, AXIS2_TRUE);
+                adb_ncReceiveMigrationInstanceResponseType_set_correlationId(output, env, correlationId);
+                adb_ncReceiveMigrationInstanceResponseType_set_userId(output, env, userId);
+                
+                ///// set operation-specific fields in output            
+                adb_instanceType_t * instance = adb_instanceType_create(env);
+                copy_instance_to_adb (instance, env, outInst); // copy all values outInst->instance
+                
+                // TODO: should we free_instance(&outInst) here or not? currently you don't have to
+                adb_ncReceiveMigrationInstanceResponseType_set_instance(output, env, instance);
+            }
+            
+            if (groupNamesSize)
+                free (groupNames);
+        }
+    }
+    
+    // set response to output
+    adb_ncReceiveMigrationInstanceResponse_set_ncReceiveMigrationInstanceResponse(response, env, output);
+    pthread_mutex_unlock(&ncHandlerLock);
+    
+    eventlog("NC", userId, correlationId, "ReceiveMigrationInstance", "end");
+    return response;
+}
+
 adb_ncDescribeInstancesResponse_t* ncDescribeInstancesMarshal (adb_ncDescribeInstances_t* ncDescribeInstances, const axutil_env_t *env)
 {
     pthread_mutex_lock(&ncHandlerLock);
@@ -573,6 +667,56 @@ adb_ncTerminateInstanceResponse_t* ncTerminateInstanceMarshal (adb_ncTerminateIn
     pthread_mutex_unlock(&ncHandlerLock);
     
     eventlog("NC", userId, correlationId, "TerminateInstance", "end");
+    return response;
+}
+
+adb_ncMigrateInstanceResponse_t* ncMigrateInstanceMarshal (adb_ncMigrateInstance_t* ncMigrateInstance, const axutil_env_t *env)
+{
+    pthread_mutex_lock(&ncHandlerLock);
+    adb_ncMigrateInstanceType_t * input          = adb_ncMigrateInstance_get_ncMigrateInstance(ncMigrateInstance, env);
+    adb_ncMigrateInstanceResponse_t * response   = adb_ncMigrateInstanceResponse_create(env);
+    adb_ncMigrateInstanceResponseType_t * output = adb_ncMigrateInstanceResponseType_create(env);
+
+    // get standard fields from input
+    axis2_char_t * correlationId = adb_ncMigrateInstanceType_get_correlationId(input, env);
+    axis2_char_t * userId = adb_ncMigrateInstanceType_get_userId(input, env);
+
+    // get operation-specific fields from input
+    axis2_char_t * instanceId = adb_ncMigrateInstanceType_get_instanceId(input, env);
+
+    eventlog("NC", userId, correlationId, "MigrateInstance", "begin");
+    { // do it
+        ncMetadata meta = { correlationId, userId };
+        int shutdownState, previousState;
+
+        int error = doMigrateInstance (&meta, instanceId, &shutdownState, &previousState);
+    
+        if (error) {
+            logprintfl (EUCAERROR, "ERROR: doMigrateInstance() failed error=%d\n", error);
+            adb_ncMigrateInstanceResponseType_set_return(output, env, AXIS2_FALSE);
+
+        } else {
+            // set standard fields in output
+            adb_ncMigrateInstanceResponseType_set_return(output, env, AXIS2_TRUE);
+            adb_ncMigrateInstanceResponseType_set_correlationId(output, env, correlationId);
+            adb_ncMigrateInstanceResponseType_set_userId(output, env, userId);
+
+            // set operation-specific fields in output
+            adb_ncMigrateInstanceResponseType_set_instanceId(output, env, instanceId);
+            // TODO: change the WSDL to use the name/code pair
+            char s[128];
+            snprintf (s, 128, "%d", shutdownState);
+            adb_ncMigrateInstanceResponseType_set_shutdownState(output, env, s);
+            snprintf (s, 128, "%d", previousState);
+            adb_ncMigrateInstanceResponseType_set_previousState(output, env, s);
+
+        }
+    }
+    // set response to output
+    adb_ncMigrateInstanceResponse_set_ncMigrateInstanceResponse(response, env, output);
+    pthread_mutex_unlock(&ncHandlerLock);
+    
+    eventlog("NC", userId, correlationId, "MigrateInstance", "end");
     return response;
 }
 
