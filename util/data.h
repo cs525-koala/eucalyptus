@@ -138,6 +138,11 @@ typedef struct ncInstance_t {
     /* updated by NC upon Attach/DetachVolume */
     ncVolume volumes[EUCA_MAX_VOLUMES];
     int volumesSize;
+
+    /* Migration data */
+    int listening_port; // Port listening on (when receiving migration)
+    char migration_node[CHAR_BUFFER_SIZE]; // Node to send VM to
+    char migration_uri[CHAR_BUFFER_SIZE]; // URI to use when migrating VM
 } ncInstance;
 
 typedef struct ncResource_t {
