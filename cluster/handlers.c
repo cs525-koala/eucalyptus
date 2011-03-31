@@ -192,6 +192,29 @@ int ncClientCall(ncMetadata *meta, int timeout, int ncLock, char *ncURL, char *n
 	  rc = 1;
 	}
       }
+    } else if (!strcmp(ncOp, "ncMigrateInstance")) {
+      char *instId = va_arg(al, char *);
+      char *migrationNode = va_arg(al, char *);
+      char *migrationURI = va_arg(al, char *);
+      int *migrateState = va_arg(al, int *);
+      int *previousState = va_arg(al, int *);
+
+      rc = ncMigrateInstanceStub(ncs, meta, instId,
+          migrationNode, migrationURI,
+          migrateState, previousState);
+      if (timeout) {
+        if (!rc) {
+          len = 2;
+          rc = write(filedes[1], &len, sizeof(int));
+          rc = write(filedes[1], migrateState, sizeof(int));
+          rc = write(filedes[1], previousState, sizeof(int));
+          rc = 0;
+        } else {
+          len = 0;
+          rc = write(filedes[1], &len, sizeof(int));
+          rc = 1;
+        }
+      }
     } else if (!strcmp(ncOp, "ncStartNetwork")) {
       char **peers = va_arg(al, char **);
       int peersLen = va_arg(al, int);
@@ -381,6 +404,33 @@ int ncClientCall(ncMetadata *meta, int timeout, int ncLock, char *ncURL, char *n
 	    opFail=1;
 	  }
 	}
+      }
+    } else if (!strcmp(ncOp, "ncMigrateInstance")) {
+      char *instId = va_arg(al, char *);
+      char *migrationNode = va_arg(al, char *);
+      char *migrationURI = va_arg(al, char *);
+      int *migrateState = va_arg(al, int *);
+      int *previousState = va_arg(al, int *);
+      if (migrateState && previousState) {
+        *migrateState = *previousState = 0;
+      }
+      if (timeout && migrateState && previousState) {
+        rbytes = timeread(filedes[0], &len, sizeof(int), timeout);
+        if (rbytes <= 0) {
+          kill(pid, SIGKILL);
+          opFail=1;
+        } else {
+          rbytes = timeread(filedes[0], migrateState, sizeof(int), timeout);
+          if (rbytes <= 0) {
+            kill(pid, SIGKILL);
+            opFail=1;
+          }
+          rbytes = timeread(filedes[0], previousState, sizeof(int), timeout);
+          if (rbytes <= 0) {
+            kill(pid, SIGKILL);
+            opFail=1;
+          }
+        }
       }
     } else if (!strcmp(ncOp, "ncStartNetwork")) {
       char **peers = va_arg(al, char **);
