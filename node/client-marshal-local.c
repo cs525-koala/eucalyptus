@@ -99,9 +99,9 @@ int ncTerminateInstanceStub (ncStub *st, ncMetadata *meta, char *instanceId, int
     return doTerminateInstance (meta, instanceId, shutdownState, previousState);
 }
 
-int ncMigrateInstanceStub (ncStub *st, ncMetadata *meta, char *instanceId, int *shutdownState, int *previousState)
+int ncMigrateInstanceStub (ncStub *st, ncMetadata *meta, char *instanceId, char *migrationNode, char *migrationURI, int *migrateState, int *previousState)
 {
-    return doMigrateInstance (meta, instanceId, shutdownState, previousState);
+    return doMigrateInstance (meta, instanceId, migrationNode, migrationURI, migrateState, previousState);
 }
 
 int ncPowerDownStub (ncStub *st, ncMetadata *meta){

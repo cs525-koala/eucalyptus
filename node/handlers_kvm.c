@@ -507,7 +507,7 @@ doMigrateInstance(	struct nc_state_t *nc,
 
   // First, find the instance:
   sem_p (inst_sem);
-  instance = find_instance (&global_instances, instanceId);
+  ncInstance *instance = find_instance (&global_instances, instanceId);
   sem_v (inst_sem);
   if (!instance) {
     logprintfl(EUCAFATAL, "Error: Could not find instance %s to migrate\n", instanceId);
