@@ -176,6 +176,10 @@ print_running_domains (void)
 				|| instance->state==PAUSED) {
 			strcat (buf, " ");
 			strcat (buf, instance->instanceId);
+      if (instance->migrationState == SEND_MIGRATION)
+        strcat (buf, "(SM)");
+      else if (instance->migrationState == RECEIVE_MIGRATION)
+        strcat (buf, "(RM)");
 		}
 	}
 	sem_v (inst_sem);
