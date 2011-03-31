@@ -2220,7 +2220,7 @@ int doTerminateInstances(ncMetadata *ccMeta, char **instIds, int instIdsLen, int
   return(0);
 }
 
-int doMigrateInstance(ncMetadata *meta, char *instanceId, char *from_node, char *to_node) {
+int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, char *to_node) {
   // Instance id is "i-41A7076E" or similar
   // from_node and to_node are node identifiers to send the specified instance from/to
   logprintfl(EUCAINFO, "doMigrateInstance(%s, %s, %s) called!\n", instanceId, from_node, to_node);
@@ -2314,6 +2314,89 @@ int doMigrateInstance(ncMetadata *meta, char *instanceId, char *from_node, char 
 
   **unlock migration from from_node
   */
+
+  // Fake implementation from previous commit
+  // Re-adding to faciliate combining the code.
+#if 0
+
+  // TODO KOALA: Reason more thoroughly about the cache consistency here.
+  // ... To what extent are we responsible for caring...?
+
+  ccInstance * migrationInst = NULL;
+  ccInstance * recvInst = NULL;
+  ncStub * ncs;
+  time_t op_start;
+  ccResourceCache resourceCacheLocal;
+  int listening_port;
+  int migrationState, previousState;
+  int rc;
+  int fromIdx;
+
+  op_start = time(NULL);
+
+  rc = initialize();
+  if (rc) {
+    return(1);
+  }
+  logprintfl(EUCAINFO, "MigrateInstance(): called\n");
+  logprintfl(EUCADEBUG, "MigrateInstance(): params: usedId=%s, instanceId=%s, from=%s, to=%s\n",
+    SP(ccMeta ? ccMeta->userId : "UNSET"),
+    instanceId,
+    from_node,
+    to_node);
+
+  sem_mywait(RESCACHE);
+  memcpy(&resourceCacheLocal, resourceCache, sizeof(ccResourceCache));
+  sem_mypost(RESCACHE);
+
+  // For now, we only migrate an instance if it's already in our cache.
+  // Note that this makes sense since in theory migration requests only come
+  // from the scheduler that is using our cache to make decisions *anyway*
+
+  // Find the specified instance
+  rc = find_instanceCacheId(instanceId, &migrationInst);
+  if (rc || !migrationInst) {
+    logprintfl(EUCAERROR, "MigrateInstance(): Failed to find specified instance %s\n", instanceId);
+    return 1;
+  }
+
+  fromIdx = migrationInst->ncHostIdx;
+
+  // Verify the instance is on the 'from' node (according to our cache)
+  {
+    char * from_hostname = resourceCacheLocal.resources[fromIdx].hostname;
+    char * from_ip = resourceCacheLocal.resources[fromIdx].ip;
+    if (strcmp(from_hostname, from_node) && strcmp(from_ip, from_node)) {
+      logprintfl(EUCAERROR, "MigrateInstance(): Resource mismatch:\n");
+      logprintfl(EUCAERROR, "\tRequested migration from node %s\n", from_node);
+      logprintfl(EUCAERROR, "\tBut instance %s is on %s (%s)\n",
+          instanceId, from_hostname, from_ip);
+    }
+  }
+  //TODO KOALA: FINISH ME
+
+  // Find the 'to_node'.
+
+  // Ask 'to_node' to receive the migration.
+  // Look at runInstance and see what needs to happen here.
+
+  // Ask 'from_node' to send, assuming all went well with 'to_node'
+
+  // On success, update all data structures (particularly resource/instance cache)
+
+  // Sync back to the cache, see other functions on how to do this.
+
+
+  logprintfl(EUCADEBUG,"MigrateInstance(): done.\n");
+
+  shawn();
+
+  return(0);
+
+  return OK;
+
+#endif
+
   return OK;
 }
 
