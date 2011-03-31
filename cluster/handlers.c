@@ -2225,6 +2225,95 @@ int doMigrateInstance(ncMetadata *meta, char *instanceId, char *from_node, char 
   // from_node and to_node are node identifiers to send the specified instance from/to
   logprintfl(EUCAINFO, "doMigrateInstance(%s, %s, %s) called!\n", instanceId, from_node, to_node);
 
+  /* fake code for migration intersperse with real code */
+  /* fake code has ** at the beginning
+  int port, migrationStarted;
+  virtualMachine *vm;
+
+  **lock migration from from_node >_< that sounds awkward
+
+  //setup local cache
+  ccResourceCache resourceCacheLocal;
+  memcpy(&resourceCacheLocal, resourceCache, sizeof(ccRescourceCache));
+
+  //search it for to_node 
+  resource *destResource;
+  for(i=0; i < numResources && !destResource;  i++){
+    if (strcmp(resourceCacheLocal.resources[i].hostname, to_node){
+      destResource = &(resourceCaceLocal.resources[i]);
+    }
+  }
+
+  //did we find it?
+  if (!destResource){
+    logprintf(EUCAWARN, "doMigrateInstance(%s, %s, %s) failed, destination node not found!\n", instanceId, from_node, to_node);
+    **unlock migration from from_node
+    return ERROR //or whatever we want here
+  }
+
+  //we need to find vm somehow (or a comparable representation of a nodes resources)
+  vm = instance->vm //work out later
+  //assuming we have vm from here on (not marking as fake)
+
+  //check if it has sufficient resources
+  if (res->state != RESDOWN) {
+    //lock res somehow
+    mem = res->availMemory - vm->mem;
+    disk = res->availDisk - vm->disk;
+    cores = res->availCores - vm->cores;
+     
+    if !(mem >= 0 && disk >= 0 && cores >= 0) {
+      logprintf(EUCAWARN, "doMigrateInstance(%s, %s, %s) failed, insufficient resources!\n", instanceId, from_node, to_node);
+      **unlock res
+      **unlock migration from from_node
+      return ERROR //or whatever we want here, generalizing error case for now
+    }
+    res->availMemory -= vm->mem;
+    res->availDisk -= vm->disk;
+    res->availCores -= vm->cores;
+    **unlock res
+  }  
+
+  //try to tell node to recieve
+  **port = doRecieveMigrationInstance(blob of arguments);
+  if(port == ERROR){ 
+    logprintf(EUCAWARN, "doMigrateInstance(%s, %s, %s) failed, recieving node refused!\n", instanceId, from_node, to_node);p
+    **lock res
+    res->availMemory += vm->mem;
+    res->availDisk += vm->disk;
+    res->availCores += vm->cores;
+    **unlock res
+    **unlock migration from from_node
+    return ERROR 
+  }
+  
+  //sanity check port 
+  **if(!isSane(port)){
+    logprintf(EUCAWARN, "doMigrateInstance(%s, %s, %s) failed, invalid port!\n", instanceId, from_node, to_node);
+    **lock res
+    res->availMemory += vm->mem;
+    res->availDisk += vm->disk;
+    res->availCores += vm->cores;
+    **unlock res
+    **unlock migration from from_node
+    return ERROR 
+  }
+  
+  //asyncronous, only verifying it started
+  **migrationStarted = doMigrateInstance(blob of arguments);
+  if(!migrationStarted){
+    logprintf(EUCAWARN, "doMigrateInstance(%s, %s, %s) migration couldn't start!\n", instanceId, from_node, to_node);
+    **lock res
+    res->availMemory += vm->mem;
+    res->availDisk += vm->disk;
+    res->availCores += vm->cores;
+    **unlock res
+    **unlock migration from from_node
+    return ERROR 
+  }
+
+  **unlock migration from from_node
+  */
   return OK;
 }
 

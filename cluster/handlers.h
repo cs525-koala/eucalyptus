@@ -244,4 +244,3 @@ int changeState(ccResource *in, int newstate);
 
 void *monitor_thread(void *);
 #endif
-
