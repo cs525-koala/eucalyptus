@@ -117,6 +117,7 @@ typedef struct ncInstance_t {
 
     /* state as NC thinks of it */
     instance_states state;
+    migration_states migrationState;
 
     char keyName[CHAR_BUFFER_SIZE*4];
     char privateDnsName[CHAR_BUFFER_SIZE];

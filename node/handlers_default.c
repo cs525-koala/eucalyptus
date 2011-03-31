@@ -281,8 +281,8 @@ doDescribeInstances(	struct nc_state_t *nc,
 		}
 		//(* outInsts)[k++] = instance;
 		tmp = (ncInstance *)malloc(sizeof(ncInstance));
-    memcpy(tmp, instance, sizeof(ncInstance));
-    (* outInsts)[k++] = tmp;
+                memcpy(tmp, instance, sizeof(ncInstance));
+                (* outInsts)[k++] = tmp;
 	}
 	*outInstsLen = k;
 	sem_v (inst_sem);
