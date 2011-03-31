@@ -202,26 +202,90 @@ void change_state(	ncInstance *instance,
 {
     int old_state = instance->state;
     instance->state = (int) state;
-    switch (state) { /* mapping from NC's internal states into external ones */
-    case STAGING:
-    case BOOTING:
-    case CANCELED:
-        instance->stateCode = PENDING;
+    switch(instance->migrationState) {
+      case NO_MIGRATION:
+        switch (state) { /* mapping from NC's internal states into external ones */
+          case STAGING:
+          case BOOTING:
+          case CANCELED:
+            instance->stateCode = PENDING;
+            break;
+          case RUNNING:
+          case BLOCKED:
+          case PAUSED:
+          case SHUTDOWN:
+          case SHUTOFF:
+          case CRASHED:
+            instance->stateCode = EXTANT;
+            instance->retries = LIBVIRT_QUERY_RETRIES;
+            break;
+          case TEARDOWN:
+            instance->stateCode = TEARDOWN;
+            break;
+          default:
+            logprintfl (EUCAERROR, "error: change_sate(): unexpected state (%d) for instance %s\n", instance->state, instance->instanceId);
+            return;
+        }
         break;
-    case RUNNING:
-    case BLOCKED:
-    case PAUSED:
-    case SHUTDOWN:
-    case SHUTOFF:
-    case CRASHED:
-        instance->stateCode = EXTANT;
-	instance->retries = LIBVIRT_QUERY_RETRIES;
+
+      case SEND_MIGRATION:
+        switch (state) { /* mapping from NC's internal states into external ones */
+          case STAGING:
+          case BOOTING:
+          case CANCELED:
+          case BLOCKED:
+            instance->migrationState = NO_MIGRATION;
+            instance->stateCode = EXTANT;
+            logprintfl(EUCAFATAL, "Error: Invalid send migration state for instance %s\n", instance->instanceId);
+            // TODO KOALA: Tell libvirt to kill this instance, this is bad!
+            return;
+          case RUNNING:
+          case PAUSED: /* TODO KOALA: Maybe timeout if in this state too long? */
+          case SHUTDOWN:
+          case SHUTOFF:
+          case CRASHED:
+            instance->stateCode = EX_SEND_MIGRATION;
+            instance->retries = LIBVIRT_QUERY_RETRIES;
+            break;
+          case TEARDOWN:
+            instance->stateCode = TEARDOWN;
+            instance->migrationState = NO_MIGRATION;
+            break;
+          default:
+            logprintfl (EUCAERROR, "error: change_sate(): unexpected state (%d) for instance %s\n", instance->state, instance->instanceId);
+            return;
+        }
         break;
-    case TEARDOWN:
-        instance->stateCode = TEARDOWN;
+
+      case RECEIVE_MIGRATION:
+        switch (state) { /* mapping from NC's internal states into external ones */
+          case STAGING:
+          case BOOTING:
+          case PAUSED:
+          case BLOCKED: /* TODO KOALA: ?!? */
+          case CANCELED: /* TODO KOALA: ?!? */
+            instance->stateCode = EX_RECEIVE_MIGRATION;
+            break;
+          case RUNNING:
+            // TODO KOALA: Move out of receive migration, we're done! \o/
+            break;
+          case SHUTDOWN:
+          case SHUTOFF:
+          case CRASHED:
+            instance->stateCode = EX_RECEIVE_MIGRATION;
+            instance->retries = LIBVIRT_QUERY_RETRIES;
+            break;
+          case TEARDOWN:
+            instance->stateCode = TEARDOWN;
+            instance->stateCode = NO_MIGRATION;
+            break;
+          default:
+            logprintfl (EUCAERROR, "error: change_sate(): unexpected state (%d) for instance %s\n", instance->state, instance->instanceId);
+            return;
+        }
         break;
-    default:
-        logprintfl (EUCAERROR, "error: change_sate(): unexpected state (%d) for instance %s\n", instance->state, instance->instanceId);        
+      default:
+        logprintfl (EUCAERROR, "Unexepected migration state (%d)\n", instance->migrationState);
         return;
     }
 

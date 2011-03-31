@@ -159,7 +159,7 @@ typedef enum instance_states_t { // these must match instance_sate_names[] below
 
     /* external migration state */
     EX_SEND_MIGRATION,
-    EX_RECIEVE_MIGRATION,
+    EX_RECEIVE_MIGRATION,
     TOTAL_STATES
 } instance_states;
 
@@ -167,7 +167,7 @@ typedef enum migration_states_t {
     /* internal migration state */
     NO_MIGRATION = 0,
     SEND_MIGRATION,
-    RECIEVE_MIGRATION
+    RECEIVE_MIGRATION
 } migration_states;
 
 static char * instance_state_names[] = {
