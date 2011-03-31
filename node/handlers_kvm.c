@@ -494,6 +494,18 @@ doGetConsoleOutput(	struct nc_state_t *nc,
   return(ret);
 }
 
+static char * getNodeURIFromHostname(char * hostname) {
+  char URI[CHAR_BUFFER_SIZE];
+  URI[0] = '\0';
+
+  // TODO unchecked strcat makes me sad.
+  strcat(URI, "qemu+ssh://");
+  strcat(URI, hostname);
+  strcat(URI, "/system");
+
+  return strdup(URI);
+}
+
 static int
 doMigrateInstance(	struct nc_state_t *nc,
 			ncMetadata *meta,
@@ -503,20 +515,71 @@ doMigrateInstance(	struct nc_state_t *nc,
 			int *migrateState,
 			int *previousState)
 {
+  ncInstance *instance;
+  virConnectPtr * local_conn, remote_conn;
+
   // Try to migrate the indicated instance.
 
-  // First, find the instance:
+  // First, find the instance
   sem_p (inst_sem);
-  ncInstance *instance = find_instance (&global_instances, instanceId);
+  instance = find_instance (&global_instances, instanceId);
   sem_v (inst_sem);
   if (!instance) {
     logprintfl(EUCAFATAL, "Error: Could not find instance %s to migrate\n", instanceId);
-    return 1;
+    return ERROR_FATAL;
   }
 
-  // XXX: Finish implementing me! For now, just error out.
+  // Make sure we're in a migrate-able state
+  if (instance->state != RUNNING && instance->migrationState != NO_MIGRATION) {
+    logprintfl(EUCAFATAL, "Error: Instance %s cannot be migrated due to state (%d,%d)\n", instanceId, instance->state, instance->migrationState);
+    return ERROR_FATAL;
+  }
 
-	return ERROR_FATAL;
+  // Okay, we're good. Let's migate this!
+  // Get connection to the local hypervisor...
+  local_conn = check_hypervisor_conn();
+  if (!local_conn) {
+    logprintfl(EUCAFATAL, "Error: Failed to connect to hypervisor!\n");
+    return ERROR_FATAL;
+  }
+
+  // Now let's try to connect to the remote hypervisor...
+  char * remoteURI = getNodeURIFromHostname(migrationNode);
+  remote_conn = virConnectOpen(remoteURI);
+
+  if(!remote_conn) {
+    logprintfl(EUCAFATAL, "Error: Failed to migrate to remote node %s using migration URI '%s'\n", migrationNode, remoteURI);
+    free(remoteURI);
+    return ERROR_FATAL;
+  }
+  free(remoteURI);
+
+  // TODO KOALA: Note that we take a lock on the local hypervisor when issuing commands
+  // Without more component communication we can't lock the remote one...
+  // Is this an issue?
+
+  // Get the domain we wish to migrate...
+  sem_p(hyp_sem);
+  virDomainPtr dom = virDomainLookupByName(*local_conn, instanceId);
+  sem_v(hyp_sem);
+  if (!dom) {
+    logprintfl(EUCAFATAL, "Error: Failed to get domain for instance %s\n", instanceId);
+    return ERROR_FATAL;
+  }
+
+  // Migrate!
+  // TODO KOALA: This probably is a blocking call, and might block for some time.
+  // Push this into a new thread in next iteration.
+  unsigned long flags = VIR_MIGRATE_LIVE;
+  virDomainPtr newdom = virDomainMigrate(
+      dom,          /* Domain to migrate */
+      remote_conn,  /* Remote hypervisor to migrate to */
+      flags,        /* Migration flags */
+      NULL,         /* Name to give at other end; NULL means leave it alone */
+      migrationURI, /* URI from local node that indicates how to send to remote host */
+      0);           /* Bandwidth -- 0 means 'pick a suitable default' */
+
+  return OK;
 }
 
 static int
