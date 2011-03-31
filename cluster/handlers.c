@@ -243,6 +243,40 @@ int ncClientCall(ncMetadata *meta, int timeout, int ncLock, char *ncURL, char *n
 	  rc = 1;
 	}
       }
+    } else if (!strcmp(ncOp, "ncReceiveMigrationInstance")) {
+      char *instId = va_arg(al, char *);
+      char *reservationId = va_arg(al, char *);
+      virtualMachine *ncvm = va_arg(al, virtualMachine *);
+      char *imageId = va_arg(al, char *);
+      char *imageURL = va_arg(al, char *);
+      char *kernelId = va_arg(al, char *);
+      char *kernelURL = va_arg(al, char *);
+      char *ramdiskId = va_arg(al, char *);
+      char *ramdiskURL = va_arg(al, char *);
+      char *keyName = va_arg(al, char *);
+      netConfig *ncnet = va_arg(al, netConfig *);
+      char *userData = va_arg(al, char *);
+      char *launchIndex = va_arg(al, char *);
+      char **netNames = va_arg(al, char **);
+      int netNamesLen = va_arg(al, int);
+      ncInstance **outInst = va_arg(al, ncInstance **);
+      int *listening_port = va_arg(al, int *);
+
+      rc = ncReceiveMigrationInstanceStub(ncs, meta, instId, reservationId, ncvm, imageId, imageURL, kernelId, kernelURL, ramdiskId, ramdiskURL, keyName, ncnet, userData, launchIndex, netNames, netNamesLen, outInst, listening_port);
+
+      if (timeout && outInst) {
+        if (!rc && *outInst) {
+          len = sizeof(ncInstance);
+          rc = write(filedes[1], &len, sizeof(int));
+          rc = write(filedes[1], *outInst, sizeof(ncInstance));
+          rc = write(filedes[1], listening_port, sizeof(int));
+          rc = 0;
+        } else {
+          len = 0;
+          rc = write(filedes[1], &len, sizeof(int));
+          rc = 1;
+        }
+      }
     } else if (!strcmp(ncOp, "ncDescribeInstances")) {
       char **instIds = va_arg(al, char **);
       int instIdsLen = va_arg(al, int);
@@ -413,6 +447,52 @@ int ncClientCall(ncMetadata *meta, int timeout, int ncLock, char *ncURL, char *n
 	    opFail=1;
 	  }
 	}
+      }
+    } else if (!strcmp(ncOp, "ncReceiveMigrationInstance")) {
+      char *instId = va_arg(al, char *);
+      char *reservationId = va_arg(al, char *);
+      virtualMachine *ncvm = va_arg(al, virtualMachine *);
+      char *imageId = va_arg(al, char *);
+      char *imageURL = va_arg(al, char *);
+      char *kernelId = va_arg(al, char *);
+      char *kernelURL = va_arg(al, char *);
+      char *ramdiskId = va_arg(al, char *);
+      char *ramdiskURL = va_arg(al, char *);
+      char *keyName = va_arg(al, char *);
+      netConfig *ncnet = va_arg(al, netConfig *);
+      char *userData = va_arg(al, char *);
+      char *launchIndex = va_arg(al, char *);
+      char **netNames = va_arg(al, char **);
+      int netNamesLen = va_arg(al, int);
+      ncInstance **outInst = va_arg(al, ncInstance **);
+      int *listening_port = va_arg(al, int *);
+
+      if (outInst) {
+        *outInst = NULL;
+      }
+      if (timeout && outInst) {
+        rbytes = timeread(filedes[0], &len, sizeof(int), timeout);
+        if (rbytes <= 0) {
+          kill(pid, SIGKILL);
+          opFail=1;
+        } else {
+          *outInst = malloc(sizeof(ncInstance));
+          if (!*outInst) {
+            logprintfl(EUCAFATAL, "ncClientCall(%s): out of memory!\n", ncOp);
+            unlock_exit(1);
+          }
+          rbytes = timeread(filedes[0], *outInst, sizeof(ncInstance), timeout);
+          if (rbytes <= 0) {
+            kill(pid, SIGKILL);
+            opFail=1;
+          } else {
+            rbytes = timeread(filedes[0], listening_port, sizeof(int), timeout);
+            if (rbytes <= 0) {
+              kill(pid, SIGKILL);
+              opFail=1;
+            }
+          }
+        }
       }
     } else if (!strcmp(ncOp, "ncDescribeInstances")) {
       char **instIds = va_arg(al, char **);
