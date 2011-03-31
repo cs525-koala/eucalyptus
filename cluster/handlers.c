@@ -74,6 +74,7 @@ permission notice:
 
 #include <server-marshal.h>
 #include <handlers.h>
+#include <scheduler.h>
 #include <storage.h>
 #include <vnetwork.h>
 #include <misc.h>
@@ -2582,6 +2583,25 @@ int init_pthreads() {
       exit(0);
     } else {
       config->threads[MONITOR] = pid;
+    }
+  }
+
+  if (config->threads[SCHEDULER] == 0 || check_process(config->threads[SCHEDULER], "httpd-cc.conf")) {
+    int pid;
+    pid = fork();
+    if (!pid) {
+      // set up default signal handler for this child process (for SIGTERM)
+      struct sigaction newsigact;
+      newsigact.sa_handler = SIG_DFL;
+      newsigact.sa_flags = 0;
+      sigemptyset(&newsigact.sa_mask);
+      sigprocmask(SIG_SETMASK, &newsigact.sa_mask, NULL);
+      sigaction(SIGTERM, &newsigact, NULL);
+
+      scheduler_thread(NULL);
+      exit(0);
+    } else {
+      config->threads[SCHEDULER] = pid;
     }
   }
 

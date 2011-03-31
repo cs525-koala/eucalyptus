@@ -116,7 +116,7 @@ void print_ccInstance(char *tag, ccInstance *in);
 enum {RESDOWN, RESUP, RESASLEEP, RESWAKING};
 enum {INSTINVALID, INSTVALID, INSTCONFLICT};
 enum {RESINVALID, RESVALID};
-enum {MONITOR, CLEANUP, CONTROL};
+enum {MONITOR, CLEANUP, CONTROL, SCHEDULER};
 enum {CONFIGLOCK, CACHELOCK, VNETCONFIGLOCK};
 
 typedef struct resource_t {
@@ -157,7 +157,7 @@ typedef struct ccConfig_t {
   int schedPolicy, schedState;
   int idleThresh, wakeThresh;
   time_t configMtime, instanceTimeout, ncPollingFrequency;
-  int threads[3];
+  int threads[4];
 } ccConfig;
 
 enum {SCHEDGREEDY, SCHEDROUNDROBIN, SCHEDPOWERSAVE, SCHEDLAST};
@@ -243,4 +243,14 @@ int powerUp(ccResource *node);
 int changeState(ccResource *in, int newstate);
 
 void *monitor_thread(void *);
+
+// Shared memory pointers
+extern ccConfig *config;
+
+extern ccInstanceCache *instanceCache;
+
+extern ccResourceCache *resourceCache;
+
+extern vnetConfig *vnetconfig;
+
 #endif
