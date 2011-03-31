@@ -165,7 +165,7 @@ typedef enum instance_states_t { // these must match instance_sate_names[] below
 
 typedef enum migration_states_t {
     /* internal migration state */
-    NO_MIGRATION,
+    NO_MIGRATION = 0,
     SEND_MIGRATION,
     RECIEVE_MIGRATION
 } migration_states;
