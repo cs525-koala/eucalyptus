@@ -160,6 +160,7 @@ print <<EOF;
             <source path='BASEPATH/console.log'/>
             <target port='1'/>
         </serial>
+        <graphics type='vnc' port='-1' autoport='yes' keymap='en-us'/>
     </devices>
 </domain>
 EOF
