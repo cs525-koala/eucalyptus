@@ -809,6 +809,9 @@ static int init (void)
 	/* set the minimum log for now */
 	snprintf(log, MAX_PATH, "%s/var/log/eucalyptus/nc.log", nc_state.home);
 	logfile(log, EUCADEBUG);
+        logprintfl (EUCAINFO, "========================================\n");
+        logprintfl (EUCAINFO, "Starting new instance of node controller\n");
+        logprintfl (EUCAINFO, "========================================\n");
 
 	if (do_warn) 
 		logprintfl (EUCAWARN, "env variable %s not set, using /\n", EUCALYPTUS_ENV_VAR_NAME);
