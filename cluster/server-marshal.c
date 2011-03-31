@@ -1149,6 +1149,52 @@ adb_TerminateInstancesResponse_t *TerminateInstancesMarshal(adb_TerminateInstanc
   return(ret);
 }
 
+adb_MigrateInstanceResponse_t *MigrateInstanceMarshal(adb_MigrateInstance_t *migrateInstance, const axutil_env_t *env) {
+  adb_MigrateInstanceResponse_t *ret=NULL;
+  adb_migrateInstanceResponseType_t *mirt=NULL;
+
+  adb_migrateInstanceType_t *mit=NULL;
+
+  int rc;
+  axis2_bool_t status=AXIS2_TRUE;
+  char statusMessage[256];
+  char *userName;
+  char *instanceId, *from_node, *to_node;
+  ncMetadata ccMeta;
+
+  mit = adb_MigrateInstance_get_MigrateInstance(migrateInstance, env);
+
+  ccMeta.correlationId = adb_migrateInstanceType_get_correlationId(mit, env);
+  ccMeta.userId = adb_migrateInstanceType_get_userId(mit, env);
+
+  instanceId = adb_migrateInstanceType_get_instanceId(mit, env);
+  from_node = adb_migrateInstanceType_get_to_node(mit, env);
+  to_node = adb_migrateInstanceType_get_from_node(mit, env);
+
+  status = AXIS2_TRUE;
+  if (!DONOTHING) {
+    rc = doMigrateInstance(&ccMeta, instanceId, from_node, to_node);
+    if (rc) {
+      logprintf("ERROR: doMigrateInstance() returned FAIL\n");
+      status = AXIS2_FALSE;
+      snprintf(statusMessage, 255, "ERROR");
+    }
+  }
+
+  mirt = adb_migrateInstanceResponseType_create(env);
+
+  adb_migrateInstanceResponseType_set_correlationId(mirt, env, ccMeta.correlationId);
+  adb_migrateInstanceResponseType_set_userId(mirt, env, ccMeta.userId);
+  adb_migrateInstanceResponseType_set_return(mirt, env, status);
+  if (status == AXIS2_FALSE) {
+    adb_migrateInstanceResponseType_set_statusMessage(mirt, env, statusMessage);
+  }
+
+  ret = adb_MigrateInstanceResponse_create(env);
+  adb_MigrateInstanceResponse_set_MigrateInstanceResponse(ret, env, mirt);
+  return(ret);
+}
+
 void print_adb_ccInstanceType(adb_ccInstanceType_t *in) {
   
 }

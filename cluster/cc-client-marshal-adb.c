@@ -372,6 +372,44 @@ int cc_stopNetwork(int vlan, char *netName, axutil_env_t *env, axis2_stub_t *stu
   return(0);
 }
 
+int cc_migrateInstance(char * instanceId, char * from_node, char * to_node,
+                       axutil_env_t *env, axis2_stub_t *stub) {
+  int i;
+  adb_MigrateInstance_t *input;
+  adb_MigrateInstanceResponse_t *output;
+  adb_migrateInstanceType_t *mi;
+  adb_migrateInstanceResponseType_t *mirt;
+
+  mi = adb_migrateInstanceType_create(env);
+  input = adb_MigrateInstance_create(env);
+
+  adb_migrateInstanceType_set_userId(mi, env, "admin");
+  {
+    char cidstr[9];
+    bzero(cidstr, 9);
+    srand(time(NULL)+getpid());
+    for (i=0; i<8; i++) {
+      cidstr[i] = rand()%26+'a';
+    }
+    adb_migrateInstanceType_set_correlationId(mi, env, cidstr);
+  }
+
+  adb_migrateInstanceType_set_instanceId(mi, env, instanceId);
+  adb_migrateInstanceType_set_to_node(mi, env, from_node);
+  adb_migrateInstanceType_set_from_node(mi, env, to_node);
+
+  adb_MigrateInstance_set_MigrateInstance(input, env, mi);
+
+  output = axis2_stub_op_EucalyptusCC_MigrateInstance(stub, env, input);
+  if (!output) {
+    printf("ERROR: migrateInstance returned NULL\n");
+    return(1);
+  }
+  mirt = adb_MigrateInstanceResponse_get_MigrateInstanceResponse(output, env);
+  printf("migrateInstance returned status %d\n", adb_migrateInstanceResponseType_get_return(mirt, env));
+  return(0);
+}
+
 int cc_attachVolume(char *volumeId, char *instanceId, char *remoteDev, char *localDev, axutil_env_t *env, axis2_stub_t *stub) {
   int i;
   //  char meh[32];

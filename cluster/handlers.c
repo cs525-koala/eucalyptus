@@ -2093,9 +2093,9 @@ int doTerminateInstances(ncMetadata *ccMeta, char **instIds, int instIdsLen, int
 int doMigrateInstance(ncMetadata *meta, char *instanceId, char *from_node, char *to_node) {
   // Instance id is "i-41A7076E" or similar
   // from_node and to_node are node identifiers to send the specified instance from/to
+  logprintfl(EUCAINFO, "doMigrateInstance(%s, %s, %s) called!\n", instanceId, from_node, to_node);
 
-
-  return ERROR_FATAL;
+  return OK;
 }
 
 int setup_shared_buffer(void **buf, char *bufname, size_t bytes, sem_t **lock, char *lockname, int mode) {

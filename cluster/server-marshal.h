@@ -70,6 +70,7 @@ adb_GetConsoleOutputResponse_t* GetConsoleOutputMarshal (adb_GetConsoleOutput_t*
 adb_RebootInstancesResponse_t* RebootInstancesMarshal (adb_RebootInstances_t* rebootInstances, const axutil_env_t *env);
 adb_TerminateInstancesResponse_t *TerminateInstancesMarshal(adb_TerminateInstances_t *terminateInstances, const axutil_env_t *env);
 //adb_RegisterImageResponse_t *RegisterImageMarshal(adb_RegisterImage_t *registerImage, const axutil_env_t *env);
+adb_MigrateInstanceResponse_t *MigrateInstanceMarshal(adb_MigrateInstance_t *migrateInstance, const axutil_env_t *env);
 
 adb_StartNetworkResponse_t *StartNetworkMarshal(adb_StartNetwork_t *startNetwork, const axutil_env_t *env);
 adb_StopNetworkResponse_t *StopNetworkMarshal(adb_StopNetwork_t *stopNetwork, const axutil_env_t *env);

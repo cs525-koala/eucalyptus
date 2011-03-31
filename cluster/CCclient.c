@@ -182,6 +182,12 @@ int main(int argc, char **argv) {
 	printf("cc_describeInstances() failed\n");
 	exit(1);
       }
+    } else if (!strcmp(argv[2], "migrateInstance")) {
+      rc = cc_migrateInstance(argv[3], argv[4], argv[5], env, stub);
+      if (rc != 0) {
+	printf("cc_migrateInstances() failed\n");
+	exit(1);
+      }
     } else if (!strcmp(argv[2], "getConsoleOutput")) {
       rc = cc_getConsoleOutput(argv[3], env, stub);
       if (rc != 0) {
