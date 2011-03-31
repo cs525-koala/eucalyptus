@@ -499,7 +499,8 @@ static char * getNodeURIFromHostname(char * hostname) {
   URI[0] = '\0';
 
   // TODO unchecked strcat makes me sad.
-  strcat(URI, "qemu+ssh://");
+  // Also, we assume root<-->root ssh key access amongst nodes :).
+  strcat(URI, "qemu+ssh://root@");
   strcat(URI, hostname);
   strcat(URI, "/system");
 
