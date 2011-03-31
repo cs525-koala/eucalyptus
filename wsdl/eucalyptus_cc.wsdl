@@ -453,6 +453,28 @@
 	</xs:complexContent>
       </xs:complexType>
 
+      <xs:complexType name="migrateInstanceType">
+        <xs:complexContent>
+          <xs:extension base="tns:eucalyptusMessage">
+            <xs:sequence>
+              <xs:element minOccurs="1" maxOccurs="1" name="instanceId" type="xs:string"/>
+              <xs:element minOccurs="1" maxOccurs="1" name="from_node" type="xs:string"/>
+              <xs:element minOccurs="1" maxOccurs="1" name="to_node" type="xs:string"/>
+            </xs:sequence>
+          </xs:extension>
+        </xs:complexContent>
+      </xs:complexType>
+
+      <xs:complexType name="migrateInstanceResponseType">
+        <xs:complexContent>
+          <xs:extension base="tns:eucalyptusMessage">
+            <xs:sequence>
+            </xs:sequence>
+          </xs:extension>
+        </xs:complexContent>
+      </xs:complexType>
+
+
       <xs:element name="AttachVolume" nillable="true" type="tns:attachVolumeType"/>
       <xs:element name="AttachVolumeResponse" nillable="true" type="tns:attachVolumeResponseType"/>
 
@@ -497,6 +519,9 @@
       
       <xs:element name="RunInstances" nillable="true" type="tns:runInstancesType"/>
       <xs:element name="RunInstancesResponse" nillable="true" type="tns:runInstancesResponseType"/>
+
+      <xs:element name="MigrateInstance" nillable="true" type="tns:migrateInstanceType"/>
+      <xs:element name="MigrateInstanceResponse" nillable="true" type="tns:migrateInstanceResponseType"/>
       
     </xs:schema>
   </wsdl:types>
@@ -576,6 +601,11 @@
     </wsdl:part>
   </wsdl:message>
 
+  <wsdl:message name="MigrateInstanceResponse">
+    <wsdl:part element="tns:MigrateInstanceResponse" name="MigrateInstanceResponse">
+    </wsdl:part>
+  </wsdl:message>
+
   <wsdl:message name="AttachVolume">
     <wsdl:part element="tns:AttachVolume" name="AttachVolume">
     </wsdl:part>
@@ -633,6 +663,11 @@
 
   <wsdl:message name="RunInstances">
     <wsdl:part element="tns:RunInstances" name="RunInstances">
+    </wsdl:part>
+  </wsdl:message>
+
+  <wsdl:message name="MigrateInstance">
+    <wsdl:part element="tns:MigrateInstance" name="MigrateInstance">
     </wsdl:part>
   </wsdl:message>
 
@@ -773,6 +808,14 @@
       <wsdl:output message="tns:RunInstancesResponse" name="RunInstancesResponse">
     </wsdl:output>
     </wsdl:operation>
+
+    <wsdl:operation name="MigrateInstance">
+      <wsdl:input message="tns:MigrateInstance" name="MigrateInstance">
+      </wsdl:input>
+      <wsdl:output message="tns:MigrateInstanceResponse" name="MigrateInstanceResponse">
+      </wsdl:output>
+    </wsdl:operation>
+
   </wsdl:portType>
 
   <wsdl:binding name="EucalyptusCCSoapBinding" type="tns:EucalyptusCC">
@@ -939,6 +982,17 @@
         <soap:body use="literal"/>
       </wsdl:output>
     </wsdl:operation>
+
+    <wsdl:operation name="MigrateInstance">
+      <soap:operation soapAction="EucalyptusCC#MigrateInstance" style="document"/>
+      <wsdl:input name="MigrateInstance">
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="MigrateInstanceResponse">
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+
   </wsdl:binding>
 
   <wsdl:service name="EucalyptusCC">
