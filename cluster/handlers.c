@@ -2090,6 +2090,14 @@ int doTerminateInstances(ncMetadata *ccMeta, char **instIds, int instIdsLen, int
   return(0);
 }
 
+int doMigrateInstance(ncMetadata *meta, char *instanceId, char *from_node, char *to_node) {
+  // Instance id is "i-41A7076E" or similar
+  // from_node and to_node are node identifiers to send the specified instance from/to
+
+
+  return ERROR_FATAL;
+}
+
 int setup_shared_buffer(void **buf, char *bufname, size_t bytes, sem_t **lock, char *lockname, int mode) {
   int shd, rc, ret;
   

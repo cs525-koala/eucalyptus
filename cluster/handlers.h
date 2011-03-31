@@ -181,6 +181,8 @@ int doGetConsoleOutput(ncMetadata *meta, char *instId, char **consoleOutput);
 int doRebootInstances(ncMetadata *meta, char **instIds, int instIdsLen);
 int doTerminateInstances(ncMetadata *meta, char **instIds, int instIdsLen, int **outStatus);
 
+int doMigrateInstance(ncMetadata *meta, char *instanceId, char *from_node, char *to_node);
+
 int doRegisterImage(ncMetadata *meta, char *amiId, char *location);
 int doDescribeResources(ncMetadata *ccMeta, virtualMachine **ccvms, int vmLen, int **outTypesMax, int **outTypesAvail, int *outTypesLen, char ***outServiceTags, int *outServiceTagsLen);
 int doFlushNetwork(ncMetadata *ccMeta, char *destName);
