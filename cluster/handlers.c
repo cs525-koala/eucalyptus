@@ -2324,23 +2324,26 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
   vm = &migrationInst->ccvm;
 
   //check if it has sufficient resources and decrement if it does
-  if (destResource->state != RESDOWN) {
-    sem_mywait(RESCACHE);
-    mem = destResource->availMemory - vm->mem;
-    disk = destResource->availDisk - vm->disk;
-    cores = destResource->availCores - vm->cores;
-
-    if (!(mem >= 0 && disk >= 0 && cores >= 0)) {
-      logprintfl(EUCAERROR, "doMigrateInstance(%s, %s, %s) failed, insufficient resources!\n", instanceId, from_node, to_node);
-      sem_mypost(RESCACHE);
-      sem_mypost(MIGRATE);
-      return 1;
-    }
-    destResource->availMemory -= vm->mem;
-    destResource->availDisk -= vm->disk;
-    destResource->availCores -= vm->cores;
-    sem_mypost(RESCACHE);
+  if (destResource->state == RESDOWN) {
+    logprintfl(EUCAERROR, "MigrateInstance(): Destination node %s is down\n", to_node);
+    sem_mypost(MIGRATE);
+    return 1;
   }
+  sem_mywait(RESCACHE);
+  mem = destResource->availMemory - vm->mem;
+  disk = destResource->availDisk - vm->disk;
+  cores = destResource->availCores - vm->cores;
+
+  if (!(mem >= 0 && disk >= 0 && cores >= 0)) {
+    logprintfl(EUCAERROR, "doMigrateInstance(%s, %s, %s) failed, insufficient resources!\n", instanceId, from_node, to_node);
+    sem_mypost(RESCACHE);
+    sem_mypost(MIGRATE);
+    return 1;
+  }
+  destResource->availMemory -= vm->mem;
+  destResource->availDisk -= vm->disk;
+  destResource->availCores -= vm->cores;
+  sem_mypost(RESCACHE);
 
   //try to tell node to recieve
   //calculate groupNamesSize
