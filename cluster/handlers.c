@@ -2371,7 +2371,22 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
   }
 
   timeout = ncGetTimeout(op_start, OP_TIMEOUT, 1, 1);
-  rc = ncClientCall(ccMeta, timeout, NCCALL, destResource->ncURL, "ncReceiveMigrationInstance", instanceId, migrationInst->reservationId, vm, migrationInst->amiId, migrationInst->kernelId, migrationInst->ramdiskId, migrationInst->keyName, migrationInst->ccnet, migrationInst->userData, migrationInst->launchIndex, migrationInst->groupNames, groupNamesSize, &listeningPort);
+  ncInstance * retInstance;
+  rc = ncClientCall(ccMeta, timeout, NCCALL, destResource->ncURL,
+      "ncReceiveMigrationInstance",
+     instanceId,
+     migrationInst->reservationId,
+     vm,
+     migrationInst->amiId, migrationInst->amiURL,
+     migrationInst->kernelId, migrationInst->kernelURL,
+     migrationInst->ramdiskId, migrationInst->ramdiskId,
+     migrationInst->keyName,
+     migrationInst->ccnet,
+     migrationInst->userData,
+     migrationInst->launchIndex,
+     migrationInst->groupNames, groupNamesSize,
+     &retInstance,
+     &listeningPort);
   if (rc) {
     logprintfl(EUCAERROR, "doMigrateInstance(%s, %s, %s) failed, recieving node refused!\n", instanceId, from_node, to_node);
     sem_mywait(RESCACHE);
