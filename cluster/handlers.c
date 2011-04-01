@@ -2422,7 +2422,8 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
 
   //asyncronous start, only verifying that it started
   ccResource * sourceResource = &resourceCacheLocal.resources[fromIdx];
-  rc = ncClientCall(ccMeta, timeout, NCCALL, sourceResource->ncURL, "ncMigrateInstance", instanceId, srcHostname, migrationURI, &migrationState, &previousState);
+  char * destHost = destResource->ip ? destResource->ip : destResource->hostname;
+  rc = ncClientCall(ccMeta, timeout, NCCALL, sourceResource->ncURL, "ncMigrateInstance", instanceId, destHost, migrationURI, &migrationState, &previousState);
   free(migrationURI);
 
   if (rc) {
