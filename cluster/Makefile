@@ -40,7 +40,7 @@ generated/stubs: $(CCWSDL) $(NCWSDL)
 	@echo Stubs generated.
 
 .c.o:
-	$(CC) -c $(CFLAGS) -Wall -Wextra $(INCLUDES) $<
+	$(CC) -c $(CFLAGS) -Wall -Wextra -Wno-unused $(INCLUDES) $<
 
 server: $(SERVICE_SO)
 
