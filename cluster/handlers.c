@@ -2285,15 +2285,13 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
   fromIdx = migrationInst->ncHostIdx;
 
   // Verify the instance is on the 'from' node (according to our cache)
-  {
-    char * fromHostname = srcHostname = resourceCacheLocal.resources[fromIdx].hostname;
-    char * fromIp = srcIp = resourceCacheLocal.resources[fromIdx].ip;
-    if (strcmp(fromHostname, from_node) && strcmp(fromIp, from_node)) {
-      logprintfl(EUCAERROR, "MigrateInstance(): Resource mismatch:\n");
-      logprintfl(EUCAERROR, "\tRequested migration from node %s\n", from_node);
-      logprintfl(EUCAERROR, "\tBut instance %s is on %s (%s)\n",
-          instanceId, fromHostname, fromIp);
-    }
+  srcHostname = resourceCacheLocal.resources[fromIdx].hostname;
+  srcIp = resourceCacheLocal.resources[fromIdx].ip;
+  if (strcmp(srcHostname, from_node) && strcmp(srcIP, from_node)) {
+    logprintfl(EUCAERROR, "MigrateInstance(): Resource mismatch:\n");
+    logprintfl(EUCAERROR, "\tRequested migration from node %s\n", from_node);
+    logprintfl(EUCAERROR, "\tBut instance %s is on %s (%s)\n",
+        instanceId, srcHostname, srcIP);
   }
 
   //search it for to_node 
