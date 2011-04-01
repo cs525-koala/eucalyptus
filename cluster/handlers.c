@@ -645,6 +645,11 @@ int ncGetTimeout(time_t op_start, time_t op_max, int numCalls, int idx) {
   return(maxint(minint(op_pernode, OP_TIMEOUT_PERNODE), OP_TIMEOUT_MIN));
 }
 
+char* getURI(char* ip)
+{
+  return ip;
+}
+
 int doAttachVolume(ncMetadata *ccMeta, char *volumeId, char *instanceId, char *remoteDev, char *localDev) {
   int i, j, rc, start = 0, stop = 0, ret=0, done=0, timeout;
   ccInstance *myInstance;
@@ -2223,101 +2228,6 @@ int doTerminateInstances(ncMetadata *ccMeta, char **instIds, int instIdsLen, int
 int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, char *to_node) {
   // Instance id is "i-41A7076E" or similar
   // from_node and to_node are node identifiers to send the specified instance from/to
-  logprintfl(EUCAINFO, "doMigrateInstance(%s, %s, %s) called!\n", instanceId, from_node, to_node);
-
-  /* fake code for migration intersperse with real code */
-  /* fake code has ** at the beginning
-  int port, migrationStarted;
-  virtualMachine *vm;
-
-  **lock migration from from_node >_< that sounds awkward
-
-  //setup local cache
-  ccResourceCache resourceCacheLocal;
-  memcpy(&resourceCacheLocal, resourceCache, sizeof(ccRescourceCache));
-
-  //search it for to_node 
-  resource *destResource;
-  for(i=0; i < numResources && !destResource;  i++){
-    if (strcmp(resourceCacheLocal.resources[i].hostname, to_node){
-      destResource = &(resourceCaceLocal.resources[i]);
-    }
-  }
-
-  //did we find it?
-  if (!destResource){
-    logprintf(EUCAWARN, "doMigrateInstance(%s, %s, %s) failed, destination node not found!\n", instanceId, from_node, to_node);
-    **unlock migration from from_node
-    return ERROR //or whatever we want here
-  }
-
-  //we need to find vm somehow (or a comparable representation of a nodes resources)
-  vm = instance->vm //work out later
-  //assuming we have vm from here on (not marking as fake)
-
-  //check if it has sufficient resources
-  if (res->state != RESDOWN) {
-    //lock res somehow
-    mem = res->availMemory - vm->mem;
-    disk = res->availDisk - vm->disk;
-    cores = res->availCores - vm->cores;
-     
-    if !(mem >= 0 && disk >= 0 && cores >= 0) {
-      logprintf(EUCAWARN, "doMigrateInstance(%s, %s, %s) failed, insufficient resources!\n", instanceId, from_node, to_node);
-      **unlock res
-      **unlock migration from from_node
-      return ERROR //or whatever we want here, generalizing error case for now
-    }
-    res->availMemory -= vm->mem;
-    res->availDisk -= vm->disk;
-    res->availCores -= vm->cores;
-    **unlock res
-  }  
-
-  //try to tell node to recieve
-  **port = doRecieveMigrationInstance(blob of arguments);
-  if(port == ERROR){ 
-    logprintf(EUCAWARN, "doMigrateInstance(%s, %s, %s) failed, recieving node refused!\n", instanceId, from_node, to_node);p
-    **lock res
-    res->availMemory += vm->mem;
-    res->availDisk += vm->disk;
-    res->availCores += vm->cores;
-    **unlock res
-    **unlock migration from from_node
-    return ERROR 
-  }
-  
-  //sanity check port 
-  **if(!isSane(port)){
-    logprintf(EUCAWARN, "doMigrateInstance(%s, %s, %s) failed, invalid port!\n", instanceId, from_node, to_node);
-    **lock res
-    res->availMemory += vm->mem;
-    res->availDisk += vm->disk;
-    res->availCores += vm->cores;
-    **unlock res
-    **unlock migration from from_node
-    return ERROR 
-  }
-  
-  //asyncronous, only verifying it started
-  **migrationStarted = doMigrateInstance(blob of arguments);
-  if(!migrationStarted){
-    logprintf(EUCAWARN, "doMigrateInstance(%s, %s, %s) migration couldn't start!\n", instanceId, from_node, to_node);
-    **lock res
-    res->availMemory += vm->mem;
-    res->availDisk += vm->disk;
-    res->availCores += vm->cores;
-    **unlock res
-    **unlock migration from from_node
-    return ERROR 
-  }
-
-  **unlock migration from from_node
-  */
-
-  // Fake implementation from previous commit
-  // Re-adding to faciliate combining the code.
-#if 0
 
   // TODO KOALA: Reason more thoroughly about the cache consistency here.
   // ... To what extent are we responsible for caring...?
@@ -2327,15 +2237,26 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
   ncStub * ncs;
   time_t op_start;
   ccResourceCache resourceCacheLocal;
-  int listening_port;
+  int mem, disk, cores;
+  int i;
+  int timeout;
+  int listeningPort;
   int migrationState, previousState;
   int rc;
   int fromIdx;
+  int groupNamesSize = 0;
+  virtualMachine *vm;
+  char* migrationURI;
+  char* srcHostname;
+  char* srcIp;
+
+  sem_mywait(MIGRATE);
 
   op_start = time(NULL);
 
   rc = initialize();
   if (rc) {
+    sem_mypost(MIGRATE);
     return(1);
   }
   logprintfl(EUCAINFO, "MigrateInstance(): called\n");
@@ -2357,6 +2278,7 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
   rc = find_instanceCacheId(instanceId, &migrationInst);
   if (rc || !migrationInst) {
     logprintfl(EUCAERROR, "MigrateInstance(): Failed to find specified instance %s\n", instanceId);
+    sem_mypost(MIGRATE);
     return 1;
   }
 
@@ -2364,23 +2286,106 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
 
   // Verify the instance is on the 'from' node (according to our cache)
   {
-    char * from_hostname = resourceCacheLocal.resources[fromIdx].hostname;
-    char * from_ip = resourceCacheLocal.resources[fromIdx].ip;
-    if (strcmp(from_hostname, from_node) && strcmp(from_ip, from_node)) {
+    char * fromHostname = srcHostname = resourceCacheLocal.resources[fromIdx].hostname;
+    char * fromIp = srcIp = resourceCacheLocal.resources[fromIdx].ip;
+    if (strcmp(fromHostname, from_node) && strcmp(fromIp, from_node)) {
       logprintfl(EUCAERROR, "MigrateInstance(): Resource mismatch:\n");
       logprintfl(EUCAERROR, "\tRequested migration from node %s\n", from_node);
       logprintfl(EUCAERROR, "\tBut instance %s is on %s (%s)\n",
-          instanceId, from_hostname, from_ip);
+          instanceId, fromHostname, fromIp);
     }
   }
+
+  //search it for to_node 
+  ccResource *destResource;
+  for(i=0; i < resourceCacheLocal.numResources && !destResource;  i++){
+    if (!strcmp(resourceCacheLocal.resources[i].hostname, to_node)){
+      destResource = &(resourceCacheLocal.resources[i]);
+    }
+  }
+
+  //did we find it?
+  if (!destResource){
+    logprintfl(EUCAERROR, "doMigrateInstance(%s, %s, %s) failed, destination node not found!\n", instanceId, from_node, to_node);
+    sem_mypost(MIGRATE);
+    return 1; //or whatever we want here
+  }
+    
+  //we need to find vm somehow (or a comparable representation of a nodes resources)
+  (*vm) = migrationInst->ccvm;
+  
+  //check if it has sufficient resources and decrement if it does
+  if (destResource->state != RESDOWN) {
+    sem_mywait(RESCACHE);
+    mem = destResource->availMemory - vm->mem;
+    disk = destResource->availDisk - vm->disk;
+    cores = destResource->availCores - vm->cores;
+     
+    if (!(mem >= 0 && disk >= 0 && cores >= 0)) {
+      logprintfl(EUCAERROR, "doMigrateInstance(%s, %s, %s) failed, insufficient resources!\n", instanceId, from_node, to_node);
+      sem_mypost(RESCACHE);
+      sem_mypost(MIGRATE);
+      return 1;
+    }
+    destResource->availMemory -= vm->mem;
+    destResource->availDisk -= vm->disk;
+    destResource->availCores -= vm->cores;
+    sem_mypost(RESCACHE);
+  }  
+
+  //try to tell node to recieve
+  //calculate groupNamesSize
+  for (i = 0; i < 64; i++)
+  {
+    if(!migrationInst->groupNames[i])
+    {
+      groupNamesSize = i;
+    }
+  }
+  timeout = ncGetTimeout(op_start, OP_TIMEOUT, 1, 1);
+  rc = ncClientCall(ccMeta, timeout, NCCALL, destResource->ncURL, "ncRecieveMigrationInstance", instanceId, migrationInst->reservationId, vm, migrationInst->amiId, migrationInst->kernelId, migrationInst->ramdiskId, migrationInst->keyName, migrationInst->ccnet, migrationInst->userData, migrationInst->launchIndex, migrationInst->groupNames, groupNamesSize, &listeningPort);
+  if(rc){ 
+    logprintfl(EUCAERROR, "doMigrateInstance(%s, %s, %s) failed, recieving node refused!\n", instanceId, from_node, to_node);
+    sem_mywait(RESCACHE);
+    destResource->availMemory += vm->mem;
+    destResource->availDisk += vm->disk;
+    destResource->availCores += vm->cores;
+    sem_mypost(RESCACHE);
+    sem_mypost(MIGRATE);
+    return 1;
+  }
+
+  //sanity check port 
+  if(listeningPort > 0){
+    logprintfl(EUCAWARN, "doMigrateInstance(%s, %s, %s) failed, invalid port!\n", instanceId, from_node, to_node);
+    sem_mywait(RESCACHE);
+    destResource->availMemory += vm->mem;
+    destResource->availDisk += vm->disk;
+    destResource->availCores += vm->cores;
+    sem_mypost(RESCACHE);
+    sem_mypost(MIGRATE);
+    return 1;
+  }
+
+  //asyncronous start, only verifying that it started
+  migrationURI = getURI(destResource->ip);
+  rc = ncClientCall(ccMeta, timeout, NCCALL, destResource->ncURL, "ncMigrateInstance", instanceId, srcHostname, migrationURI, &migrationState, &previousState);
+
+  if(rc){
+    logprintfl(EUCAWARN, "doMigrateInstance(%s, %s, %s) migration couldn't start!\n", instanceId, from_node, to_node);
+    sem_mywait(RESCACHE);
+    destResource->availMemory += vm->mem;
+    destResource->availDisk += vm->disk;
+    destResource->availCores += vm->cores;
+    sem_mypost(RESCACHE);
+    sem_mypost(MIGRATE);
+    return 1;
+  }
+
+  sem_mypost(MIGRATE);
+
+
   //TODO KOALA: FINISH ME
-
-  // Find the 'to_node'.
-
-  // Ask 'to_node' to receive the migration.
-  // Look at runInstance and see what needs to happen here.
-
-  // Ask 'from_node' to send, assuming all went well with 'to_node'
 
   // On success, update all data structures (particularly resource/instance cache)
 
@@ -2390,12 +2395,6 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
   logprintfl(EUCADEBUG,"MigrateInstance(): done.\n");
 
   shawn();
-
-  return(0);
-
-  return OK;
-
-#endif
 
   return OK;
 }
