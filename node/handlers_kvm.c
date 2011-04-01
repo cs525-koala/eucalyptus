@@ -253,6 +253,7 @@ doReceiveMigrationInstance (	struct nc_state_t *nc,
         logprintfl (EUCAFATAL, "Error: instance %s already running\n", instanceId);
         return 1; /* TODO: return meaningful error codes? */
     }
+
     if (!(instance = allocate_instance (instanceId, 
                                         reservationId,
                                         params, 
@@ -267,9 +268,7 @@ doReceiveMigrationInstance (	struct nc_state_t *nc,
         logprintfl (EUCAFATAL, "Error: could not allocate instance struct\n");
         return 2;
     }
-    // XXX: Figure out what state this should go into, probably STAGING or similar
-    // with the migration state set as 'RM'
-    //change_state(instance, STAGING);
+    instance->migrationState = RECEIVE_MIGRATION;
 
     sem_p (inst_sem); 
     error = add_instance (&global_instances, instance);
@@ -315,7 +314,7 @@ doReceiveMigrationInstance (	struct nc_state_t *nc,
 #endif
 
     * outInst = instance;
-    * listening_port = 1234; // XXX: Pick a port from a port reserve or similar.
+    * listening_port = 44444; // XXX: Pick a port from a port reserve or similar.
     return 0;
   //=============== From runInstance =====================
 }

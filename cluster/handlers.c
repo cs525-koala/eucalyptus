@@ -267,7 +267,6 @@ int ncClientCall(ncMetadata *meta, int timeout, int ncLock, char *ncURL, char *n
 	}
       }
     } else if (!strcmp(ncOp, "ncReceiveMigrationInstance")) {
-      logprintfl(EUCADEBUG, "ncClient, ncReceiveMigrationInstance XXXXXXX\n");
       char *instId = va_arg(al, char *);
       char *reservationId = va_arg(al, char *);
       virtualMachine *ncvm = va_arg(al, virtualMachine *);
@@ -2422,7 +2421,8 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
     migrationURI = getURI(destResource->hostname, listeningPort);
 
   //asyncronous start, only verifying that it started
-  rc = ncClientCall(ccMeta, timeout, NCCALL, destResource->ncURL, "ncMigrateInstance", instanceId, srcHostname, migrationURI, &migrationState, &previousState);
+  ccResource * sourceResource = &resourceCacheLocal.resources[fromIdx];
+  rc = ncClientCall(ccMeta, timeout, NCCALL, sourceResource->ncURL, "ncMigrateInstance", instanceId, srcHostname, migrationURI, &migrationState, &previousState);
   free(migrationURI);
 
   if (rc) {
