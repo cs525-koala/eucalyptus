@@ -267,6 +267,7 @@ int ncClientCall(ncMetadata *meta, int timeout, int ncLock, char *ncURL, char *n
 	}
       }
     } else if (!strcmp(ncOp, "ncReceiveMigrationInstance")) {
+      logprintfl(EUCADEBUG, "ncClient, ncReceiveMigrationInstance XXXXXXX\n");
       char *instId = va_arg(al, char *);
       char *reservationId = va_arg(al, char *);
       virtualMachine *ncvm = va_arg(al, virtualMachine *);
@@ -284,6 +285,24 @@ int ncClientCall(ncMetadata *meta, int timeout, int ncLock, char *ncURL, char *n
       int netNamesLen = va_arg(al, int);
       ncInstance **outInst = va_arg(al, ncInstance **);
       int *listening_port = va_arg(al, int *);
+
+      logprintfl(EUCADEBUG, "ncClient, ncReceiveMigrationInstance\n");
+      //logprintfl(EUCADEBUG, "%s, %s, %p, %s, %s, %s, %s, %s, %s, %s, %p, %s, %s, %p, %d, %p, %p\n",
+      logprintfl(EUCADEBUG, "%p, %p, %p, %p, %p, %p, %p, %p, %p, %p, %p, %p, %p, %p, %d, %p, %p\n",
+          instId,
+          reservationId,
+          ncvm,
+          imageId, imageURL,
+          kernelId, kernelURL,
+          ramdiskId, ramdiskURL,
+          keyName,
+          ncnet,
+          userData,
+          launchIndex,
+          netNames,
+          netNamesLen,
+          outInst,
+          listening_port);
 
       rc = ncReceiveMigrationInstanceStub(ncs, meta, instId, reservationId, ncvm, imageId, imageURL, kernelId, kernelURL, ramdiskId, ramdiskURL, keyName, ncnet, userData, launchIndex, netNames, netNamesLen, outInst, listening_port);
 
@@ -499,6 +518,7 @@ int ncClientCall(ncMetadata *meta, int timeout, int ncLock, char *ncURL, char *n
 	}
       }
     } else if (!strcmp(ncOp, "ncReceiveMigrationInstance")) {
+      logprintfl(EUCADEBUG, "ncClient, ncReceiveMigrationInstance YYYYYYY\n");
       char *instId = va_arg(al, char *);
       char *reservationId = va_arg(al, char *);
       virtualMachine *ncvm = va_arg(al, virtualMachine *);
@@ -2264,8 +2284,6 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
     return(1);
   }
 
-  sem_mywait(MIGRATE);
-
   logprintfl(EUCAINFO, "MigrateInstance(): called\n");
   logprintfl(EUCADEBUG, "MigrateInstance(): params: usedId=%s, instanceId=%s, from=%s, to=%s\n",
     SP(ccMeta ? ccMeta->userId : "UNSET"),
@@ -2273,9 +2291,14 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
     from_node,
     to_node);
 
+  logprintfl(EUCAINFO, "MigrateInstance(): Getting migration lock...\n");
+  sem_mywait(MIGRATE);
+  logprintfl(EUCAINFO, "MigrateInstance(): Got migration lock!\n");
+
   sem_mywait(RESCACHE);
   memcpy(&resourceCacheLocal, resourceCache, sizeof(ccResourceCache));
   sem_mypost(RESCACHE);
+
 
   // For now, we only migrate an instance if it's already in our cache.
   // Note that this makes sense since in theory migration requests only come
@@ -2705,7 +2728,7 @@ int init_thread(void) {
     sem_mywait(INIT);
 
     locks[NCCALL] = sem_open("/eucalyptusCCncCallLock", O_CREAT, 0644, 4);
-    locks[MIGRATE] = sem_open("/eucalyptusCCmigrationLock", O_CREAT, 0644, 4);
+    locks[MIGRATE] = sem_open("/eucalyptusCCmigrationLock", O_CREAT, 0644, 1);
     
     if (config == NULL) {
       rc = setup_shared_buffer((void **)&config, "/eucalyptusCCConfig", sizeof(ccConfig), &(locks[CONFIG]), "/eucalyptusCCConfigLock", SHARED_FILE);
