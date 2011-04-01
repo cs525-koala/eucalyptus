@@ -2237,13 +2237,14 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
   ncStub * ncs;
   time_t op_start;
   ccResourceCache resourceCacheLocal;
+  ccResource *destResource;
   int mem, disk, cores;
   int i;
   int timeout;
   int listeningPort;
   int migrationState, previousState;
   int rc;
-  int fromIdx;
+  int fromIdx, toIdx;
   int groupNamesSize = 0;
   virtualMachine *vm;
   char* migrationURI;
@@ -2297,10 +2298,10 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
   }
 
   //search it for to_node 
-  ccResource *destResource;
   for(i=0; i < resourceCacheLocal.numResources && !destResource;  i++){
     if (!strcmp(resourceCacheLocal.resources[i].hostname, to_node)){
       destResource = &(resourceCacheLocal.resources[i]);
+      toIdx = i;
     }
   }
 
@@ -2381,15 +2382,24 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
     sem_mypost(MIGRATE);
     return 1;
   }
+  //create & update ccInstance for reciever
+  memcpy(migrationInst, recvInst, sizeof(ccInstance));
+  strncpy(recvInst->state, "Recv-Migration", CHAR_BUFFER_SIZE);
+  recvInst->ncHostIdx = toIdx;
+  //todo make sure this adds properly (doesn't bounce for repeated id/other weirdness) 
+  add_instanceCache(instanceId, recvInst);
 
-  sem_mypost(MIGRATE);
-
-
+  //update ccInstance state for sender
+  strncpy(migrationInst->state, "Send-Migration", CHAR_BUFFER_SIZE);
+  refresh_instanceCache(instanceId, migrationInst);
+  
   //TODO KOALA: FINISH ME
 
-  // On success, update all data structures (particularly resource/instance cache)
-
   // Sync back to the cache, see other functions on how to do this.
+  //    I think the add/refresh_instanceCache does this --Kevin
+
+
+  sem_mypost(MIGRATE);
 
 
   logprintfl(EUCADEBUG,"MigrateInstance(): done.\n");

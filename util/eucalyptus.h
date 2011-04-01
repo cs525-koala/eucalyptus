@@ -190,7 +190,7 @@ static char * instance_state_names[] = {
     "Extant",
     "Teardown",
     "Send-Migration",
-    "Recieve-Migration"
+    "Recv-Migration"
 };
 
 typedef enum bundling_progress_t {
