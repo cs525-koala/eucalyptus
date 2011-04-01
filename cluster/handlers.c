@@ -2350,7 +2350,7 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
 
   if (!(mem >= 0 && disk >= 0 && cores >= 0)) {
     logprintfl(EUCAERROR, "doMigrateInstance(%s, %s, %s) failed, insufficient resources!\n", instanceId, from_node, to_node);
-    logprintfl(EUCADEBUG, "MigrateInstance(): Wanted %d/%d/%d, node only has %d/%d/%d (mem/cpu/disk)\n",
+    logprintfl(EUCADEBUG, "MigrateInstance(): Wanted %d/%d/%d, node only has %d/%d/%d (mem/disk/cpu)\n",
         vm->mem, vm->disk, vm->cores,
         destResource->availMemory, destResource->availDisk, destResource->availCores);
     sem_mypost(RESCACHE);
