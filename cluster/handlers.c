@@ -2664,6 +2664,7 @@ int init_thread(void) {
     sem_mywait(INIT);
 
     locks[NCCALL] = sem_open("/eucalyptusCCncCallLock", O_CREAT, 0644, 4);
+    locks[MIGRATE] = sem_open("/eucalyptusCCmigrationLock", O_CREAT, 0644, 4);
     
     if (config == NULL) {
       rc = setup_shared_buffer((void **)&config, "/eucalyptusCCConfig", sizeof(ccConfig), &(locks[CONFIG]), "/eucalyptusCCConfigLock", SHARED_FILE);
