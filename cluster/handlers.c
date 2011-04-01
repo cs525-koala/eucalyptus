@@ -645,9 +645,15 @@ int ncGetTimeout(time_t op_start, time_t op_max, int numCalls, int idx) {
   return(maxint(minint(op_pernode, OP_TIMEOUT_PERNODE), OP_TIMEOUT_MIN));
 }
 
-char* getURI(char* ip)
+// Returns URI for the given ip/port pair.
+// Caller needs to free result.
+char* getURI(char* ip, int port)
 {
-  return ip;
+  static char URI[CHAR_BUFFER_SIZE];
+  snprintf(URI, CHAR_BUFFER_SIZE, "tcp://%s:%d", ip, port);
+  URI[CHAR_BUFFER_SIZE-1]='\0';
+
+  return strdup(URI);
 }
 
 int doAttachVolume(ncMetadata *ccMeta, char *volumeId, char *instanceId, char *remoteDev, char *localDev) {
@@ -2287,18 +2293,18 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
   // Verify the instance is on the 'from' node (according to our cache)
   srcHostname = resourceCacheLocal.resources[fromIdx].hostname;
   srcIp = resourceCacheLocal.resources[fromIdx].ip;
-  if (strcmp(srcHostname, from_node) && strcmp(srcIP, from_node)) {
+  if (strcmp(srcHostname, from_node) && strcmp(srcIp, from_node)) {
     logprintfl(EUCAERROR, "MigrateInstance(): Resource mismatch:\n");
     logprintfl(EUCAERROR, "\tRequested migration from node %s\n", from_node);
     logprintfl(EUCAERROR, "\tBut instance %s is on %s (%s)\n",
-        instanceId, srcHostname, srcIP);
+        instanceId, srcHostname, srcIp);
   }
 
   // Search the resource cache for the destination node
   ccResource *destResource;
   for(i=0; i < resourceCacheLocal.numResources && !destResource;  i++){
     if (!strcmp(resourceCacheLocal.resources[i].hostname, to_node) ||
-        !strcmp(resourecCacheLocal.resources[i].ip, to_node)) {
+        !strcmp(resourceCacheLocal.resources[i].ip, to_node)) {
       destResource = &(resourceCacheLocal.resources[i]);
     }
   }
@@ -2330,7 +2336,7 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
     destResource->availDisk -= vm->disk;
     destResource->availCores -= vm->cores;
     sem_mypost(RESCACHE);
-  }  
+  }
 
   //try to tell node to recieve
   //calculate groupNamesSize
@@ -2341,9 +2347,10 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
       groupNamesSize = i;
     }
   }
+
   timeout = ncGetTimeout(op_start, OP_TIMEOUT, 1, 1);
   rc = ncClientCall(ccMeta, timeout, NCCALL, destResource->ncURL, "ncRecieveMigrationInstance", instanceId, migrationInst->reservationId, vm, migrationInst->amiId, migrationInst->kernelId, migrationInst->ramdiskId, migrationInst->keyName, migrationInst->ccnet, migrationInst->userData, migrationInst->launchIndex, migrationInst->groupNames, groupNamesSize, &listeningPort);
-  if(rc){ 
+  if (rc) {
     logprintfl(EUCAERROR, "doMigrateInstance(%s, %s, %s) failed, recieving node refused!\n", instanceId, from_node, to_node);
     sem_mywait(RESCACHE);
     destResource->availMemory += vm->mem;
@@ -2355,7 +2362,7 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
   }
 
   //sanity check port 
-  if(listeningPort > 0){
+  if (listeningPort > 0) {
     logprintfl(EUCAWARN, "doMigrateInstance(%s, %s, %s) failed, invalid port!\n", instanceId, from_node, to_node);
     sem_mywait(RESCACHE);
     destResource->availMemory += vm->mem;
@@ -2367,10 +2374,11 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
   }
 
   //asyncronous start, only verifying that it started
-  migrationURI = getURI(destResource->ip);
+  migrationURI = getURI(destResource->ip, listeningPort);
   rc = ncClientCall(ccMeta, timeout, NCCALL, destResource->ncURL, "ncMigrateInstance", instanceId, srcHostname, migrationURI, &migrationState, &previousState);
+  free(migrationURI);
 
-  if(rc){
+  if (rc) {
     logprintfl(EUCAWARN, "doMigrateInstance(%s, %s, %s) migration couldn't start!\n", instanceId, from_node, to_node);
     sem_mywait(RESCACHE);
     destResource->availMemory += vm->mem;
