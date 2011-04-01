@@ -2292,6 +2292,8 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
   fromIdx = migrationInst->ncHostIdx;
 
   // Verify the instance is on the 'from' node (according to our cache)
+  logprintfl(EUCADEBUG, "MigrateInstance(): Verifying instance %s is on node %s\n",
+                         instanceId, from_node);
   srcHostname = resourceCacheLocal.resources[fromIdx].hostname;
   srcIp = resourceCacheLocal.resources[fromIdx].ip;
   if (strcmp(srcHostname, from_node) && strcmp(srcIp, from_node)) {
@@ -2302,6 +2304,7 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
   }
 
   // Search the resource cache for the destination node
+  logprintfl(EUCADEBUG, "MigrateInstance(): Searching resource cache for destination node\n");
   for(i=0; i < resourceCacheLocal.numResources && !destResource;  i++){
     if (!strcmp(resourceCacheLocal.resources[i].hostname, to_node) ||
         !strcmp(resourceCacheLocal.resources[i].ip, to_node)) {
