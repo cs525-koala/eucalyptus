@@ -286,34 +286,6 @@ int ncClientCall(ncMetadata *meta, int timeout, int ncLock, char *ncURL, char *n
       ncInstance **outInst = va_arg(al, ncInstance **);
       int *listening_port = va_arg(al, int *);
 
-      logprintfl(EUCADEBUG, "ncClient, ncReceiveMigrationInstance\n");
-      //logprintfl(EUCADEBUG, "%s, %s, %p, %s, %s, %s, %s, %s, %s, %s, %p, %s, %s, %p, %d, %p, %p\n",
-      logprintfl(EUCADEBUG, "%p, %p, %p, %p, %p, %p, %p, %p, %p, %p, %p, %p, %p, %p, %d, %p, %p\n",
-          instId,
-          reservationId,
-          ncvm,
-          imageId, imageURL,
-          kernelId, kernelURL,
-          ramdiskId, ramdiskURL,
-          keyName,
-          ncnet,
-          userData,
-          launchIndex,
-          netNames,
-          netNamesLen,
-          outInst,
-          listening_port);
-      logprintfl(EUCADEBUG, "1%s\n", instId);
-      logprintfl(EUCADEBUG, "2%s\n", reservationId);
-      logprintfl(EUCADEBUG, "3%s\n", imageId);
-      logprintfl(EUCADEBUG, "4%s\n", imageURL);
-      logprintfl(EUCADEBUG, "5%s\n", kernelId);
-      logprintfl(EUCADEBUG, "6%s\n", kernelURL);
-      logprintfl(EUCADEBUG, "7%s\n", ramdiskId);
-      logprintfl(EUCADEBUG, "8%s\n", ramdiskURL);
-      logprintfl(EUCADEBUG, "9%s\n", keyName);
-      logprintfl(EUCADEBUG, "10%p\n", userData);
-
       rc = ncReceiveMigrationInstanceStub(ncs, meta, instId, reservationId, ncvm, imageId, imageURL, kernelId, kernelURL, ramdiskId, ramdiskURL, keyName, ncnet, userData, launchIndex, netNames, netNamesLen, outInst, listening_port);
 
       if (timeout && outInst) {
@@ -528,7 +500,6 @@ int ncClientCall(ncMetadata *meta, int timeout, int ncLock, char *ncURL, char *n
 	}
       }
     } else if (!strcmp(ncOp, "ncReceiveMigrationInstance")) {
-      logprintfl(EUCADEBUG, "ncClient, ncReceiveMigrationInstance YYYYYYY\n");
       char *instId = va_arg(al, char *);
       char *reservationId = va_arg(al, char *);
       virtualMachine *ncvm = va_arg(al, virtualMachine *);
@@ -2405,6 +2376,7 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
 
   timeout = ncGetTimeout(op_start, OP_TIMEOUT, 1, 1);
   ncInstance * retInstance;
+  migrationInst->userData[0] = '\0';
   rc = ncClientCall(ccMeta, timeout, NCCALL, destResource->ncURL,
       "ncReceiveMigrationInstance",
      instanceId,
@@ -2414,7 +2386,7 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
      migrationInst->kernelId, migrationInst->kernelURL,
      migrationInst->ramdiskId, migrationInst->ramdiskURL,
      migrationInst->keyName,
-     migrationInst->ccnet,
+     &migrationInst->ccnet,
      migrationInst->userData,
      migrationInst->launchIndex,
      migrationInst->groupNames, groupNamesSize,
@@ -2431,8 +2403,8 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
     return 1;
   }
 
-  //sanity check port 
-  if (listeningPort > 0) {
+  // Sanity check port
+  if (listeningPort <= 0) {
     logprintfl(EUCAWARN, "doMigrateInstance(%s, %s, %s) failed, invalid port!\n", instanceId, from_node, to_node);
     sem_mywait(RESCACHE);
     destResource->availMemory += vm->mem;
