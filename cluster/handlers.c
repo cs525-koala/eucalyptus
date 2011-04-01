@@ -2239,7 +2239,7 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
   // ... To what extent are we responsible for caring...?
 
   ccInstance * migrationInst = NULL;
-  ccInstance * recvInst = NULL;
+  ccInstance recvInst;
   ncStub * ncs;
   time_t op_start;
   ccResourceCache resourceCacheLocal;
@@ -2302,7 +2302,6 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
   }
 
   // Search the resource cache for the destination node
-  ccResource *destResource;
   for(i=0; i < resourceCacheLocal.numResources && !destResource;  i++){
     if (!strcmp(resourceCacheLocal.resources[i].hostname, to_node) ||
         !strcmp(resourceCacheLocal.resources[i].ip, to_node)) {
@@ -2391,24 +2390,20 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
     return 1;
   }
   //create & update ccInstance for reciever
-  recvInst = (ccInstance*) malloc(sizeof(ccInstance));
-  memcpy(migrationInst, recvInst, sizeof(ccInstance));
-  strncpy(recvInst->state, "Recv-Migration", CHAR_BUFFER_SIZE);
-  recvInst->ncHostIdx = toIdx;
+  memcpy(&recvInst, migrationInst, sizeof(ccInstance));
+  strncpy(recvInst.state, "Recv-Migration", sizeof(recvInst.state));
+  recvInst.ncHostIdx = toIdx;
   //todo make sure this adds properly (doesn't bounce for repeated id/other weirdness) 
-  add_instanceCache(instanceId, recvInst);
+  add_instanceCache(instanceId, &recvInst);
 
   //update ccInstance state for sender
-  strncpy(migrationInst->state, "Send-Migration", CHAR_BUFFER_SIZE);
+  strncpy(migrationInst->state, "Send-Migration", sizeof(migrationInst->state));
   refresh_instanceCache(instanceId, migrationInst);
-  
+
   //TODO KOALA: FINISH ME
 
   // Sync back to the cache, see other functions on how to do this.
   //    I think the add/refresh_instanceCache does this --Kevin
-
-  // I think... we do this now
-  free(recvInst);
 
   sem_mypost(MIGRATE);
 
