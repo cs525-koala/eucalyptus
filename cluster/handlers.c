@@ -2294,19 +2294,20 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
         instanceId, srcHostname, srcIP);
   }
 
-  //search it for to_node 
+  // Search the resource cache for the destination node
   ccResource *destResource;
   for(i=0; i < resourceCacheLocal.numResources && !destResource;  i++){
-    if (!strcmp(resourceCacheLocal.resources[i].hostname, to_node)){
+    if (!strcmp(resourceCacheLocal.resources[i].hostname, to_node) ||
+        !strcmp(resourecCacheLocal.resources[i].ip, to_node)) {
       destResource = &(resourceCacheLocal.resources[i]);
     }
   }
 
-  //did we find it?
+  // (Did we find the destination node?)
   if (!destResource){
     logprintfl(EUCAERROR, "doMigrateInstance(%s, %s, %s) failed, destination node not found!\n", instanceId, from_node, to_node);
     sem_mypost(MIGRATE);
-    return 1; //or whatever we want here
+    return 1;
   }
 
   //we need to find vm somehow (or a comparable representation of a nodes resources)
