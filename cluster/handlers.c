@@ -2383,6 +2383,7 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
     return 1;
   }
   //create & update ccInstance for reciever
+  recvInst = ccInstance* malloc(sizeof(ccInstance));
   memcpy(migrationInst, recvInst, sizeof(ccInstance));
   strncpy(recvInst->state, "Recv-Migration", CHAR_BUFFER_SIZE);
   recvInst->ncHostIdx = toIdx;
@@ -2398,6 +2399,8 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
   // Sync back to the cache, see other functions on how to do this.
   //    I think the add/refresh_instanceCache does this --Kevin
 
+  // I think... we do this now
+  free(recvInst);
 
   sem_mypost(MIGRATE);
 
