@@ -2257,15 +2257,15 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
   char* srcHostname;
   char* srcIp;
 
-  sem_mywait(MIGRATE);
-
   op_start = time(NULL);
 
   rc = initialize();
   if (rc) {
-    sem_mypost(MIGRATE);
     return(1);
   }
+
+  sem_mywait(MIGRATE);
+
   logprintfl(EUCAINFO, "MigrateInstance(): called\n");
   logprintfl(EUCADEBUG, "MigrateInstance(): params: usedId=%s, instanceId=%s, from=%s, to=%s\n",
     SP(ccMeta ? ccMeta->userId : "UNSET"),
