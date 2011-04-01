@@ -2296,19 +2296,28 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
                          instanceId, from_node);
   srcHostname = resourceCacheLocal.resources[fromIdx].hostname;
   srcIp = resourceCacheLocal.resources[fromIdx].ip;
-  if (strcmp(srcHostname, from_node) && strcmp(srcIp, from_node)) {
+
+  if (!srcHostname) {
+    logprintfl(EUCAERROR, "MigrateInstance(): Destination node missing hostname??\n");
+    sem_mypost(MIGRATE);
+    return 1;
+  }
+  if (strcmp(srcHostname, from_node) && (srcIp && strcmp(srcIp, from_node))) {
     logprintfl(EUCAERROR, "MigrateInstance(): Resource mismatch:\n");
     logprintfl(EUCAERROR, "\tRequested migration from node %s\n", from_node);
     logprintfl(EUCAERROR, "\tBut instance %s is on %s (%s)\n",
         instanceId, srcHostname, srcIp);
+    sem_mypost(MIGRATE);
+    return 1;
   }
 
   // Search the resource cache for the destination node
   logprintfl(EUCADEBUG, "MigrateInstance(): Searching resource cache for destination node\n");
   for(i=0; i < resourceCacheLocal.numResources && !destResource;  i++){
-    if (!strcmp(resourceCacheLocal.resources[i].hostname, to_node) ||
-        !strcmp(resourceCacheLocal.resources[i].ip, to_node)) {
-      destResource = &(resourceCacheLocal.resources[i]);
+    ccResource * R = &resourceCacheLocal.resources[i];
+    if ((R->hostname && !strcmp(R->hostname, to_node)) ||
+        (R->ip && !strcmp(R->ip, to_node))) {
+      destResource = R;
       toIdx = i;
     }
   }
@@ -2329,6 +2338,8 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
     sem_mypost(MIGRATE);
     return 1;
   }
+
+  logprintfl(EUCADEBUG, "MigrateInstance(): Checking resources and allocating if available...\n");
   sem_mywait(RESCACHE);
   mem = destResource->availMemory - vm->mem;
   disk = destResource->availDisk - vm->disk;
@@ -2340,6 +2351,7 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
     sem_mypost(MIGRATE);
     return 1;
   }
+
   destResource->availMemory -= vm->mem;
   destResource->availDisk -= vm->disk;
   destResource->availCores -= vm->cores;
@@ -2380,8 +2392,13 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
     return 1;
   }
 
+  // Build migration URI using ip if available, falling back to hostname
+  if (destResource->ip)
+    migrationURI = getURI(destResource->ip, listeningPort);
+  else
+    migrationURI = getURI(destResource->hostname, listeningPort);
+
   //asyncronous start, only verifying that it started
-  migrationURI = getURI(destResource->ip, listeningPort);
   rc = ncClientCall(ccMeta, timeout, NCCALL, destResource->ncURL, "ncMigrateInstance", instanceId, srcHostname, migrationURI, &migrationState, &previousState);
   free(migrationURI);
 
