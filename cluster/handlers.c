@@ -2311,7 +2311,7 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
   }
 
   //we need to find vm somehow (or a comparable representation of a nodes resources)
-  (*vm) = migrationInst->ccvm;
+  vm = &migrationInst->ccvm;
 
   //check if it has sufficient resources and decrement if it does
   if (destResource->state != RESDOWN) {
