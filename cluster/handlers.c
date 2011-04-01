@@ -111,7 +111,7 @@ int ncClientCall(ncMetadata *meta, int timeout, int ncLock, char *ncURL, char *n
   int filedes[2];
 
   logprintfl(EUCADEBUG, "ncClientCall(%s): called ncURL=%s timeout=%d\n", ncOp, ncURL, timeout);
-  
+
   rc = pipe(filedes);
   if (rc) {
     logprintfl(EUCAERROR, "ncClientCall(%s): cannot create pipe\n", ncOp);
@@ -122,7 +122,7 @@ int ncClientCall(ncMetadata *meta, int timeout, int ncLock, char *ncURL, char *n
 
   // grab the lock
   sem_mywait(ncLock);
-  
+
   pid = fork();
   if (!pid) {
     ncStub *ncs;
@@ -132,7 +132,7 @@ int ncClientCall(ncMetadata *meta, int timeout, int ncLock, char *ncURL, char *n
     if (config->use_wssec) {
       rc = InitWSSEC(ncs->env, ncs->stub, config->policyFile);
     }
-              
+
     logprintfl(EUCADEBUG, "\tncClientCall(%s): ppid=%d client calling '%s'\n", ncOp, getppid(), ncOp);
     if (!strcmp(ncOp, "ncGetConsoleOutput")) {
       // args: char *instId
@@ -303,6 +303,16 @@ int ncClientCall(ncMetadata *meta, int timeout, int ncLock, char *ncURL, char *n
           netNamesLen,
           outInst,
           listening_port);
+      logprintfl(EUCADEBUG, "1%s\n", instId);
+      logprintfl(EUCADEBUG, "2%s\n", reservationId);
+      logprintfl(EUCADEBUG, "3%s\n", imageId);
+      logprintfl(EUCADEBUG, "4%s\n", imageURL);
+      logprintfl(EUCADEBUG, "5%s\n", kernelId);
+      logprintfl(EUCADEBUG, "6%s\n", kernelURL);
+      logprintfl(EUCADEBUG, "7%s\n", ramdiskId);
+      logprintfl(EUCADEBUG, "8%s\n", ramdiskURL);
+      logprintfl(EUCADEBUG, "9%s\n", keyName);
+      logprintfl(EUCADEBUG, "10%p\n", userData);
 
       rc = ncReceiveMigrationInstanceStub(ncs, meta, instId, reservationId, ncvm, imageId, imageURL, kernelId, kernelURL, ramdiskId, ramdiskURL, keyName, ncnet, userData, launchIndex, netNames, netNamesLen, outInst, listening_port);
 
@@ -2402,7 +2412,7 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
      vm,
      migrationInst->amiId, migrationInst->amiURL,
      migrationInst->kernelId, migrationInst->kernelURL,
-     migrationInst->ramdiskId, migrationInst->ramdiskId,
+     migrationInst->ramdiskId, migrationInst->ramdiskURL,
      migrationInst->keyName,
      migrationInst->ccnet,
      migrationInst->userData,
