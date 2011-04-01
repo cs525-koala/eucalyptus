@@ -2243,7 +2243,7 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
   ncStub * ncs;
   time_t op_start;
   ccResourceCache resourceCacheLocal;
-  ccResource *destResource;
+  ccResource *destResource = NULL;
   int mem, disk, cores;
   int i;
   int timeout;
