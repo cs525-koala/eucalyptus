@@ -2383,7 +2383,7 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
     return 1;
   }
   //create & update ccInstance for reciever
-  recvInst = ccInstance* malloc(sizeof(ccInstance));
+  recvInst = (ccInstance*) malloc(sizeof(ccInstance));
   memcpy(migrationInst, recvInst, sizeof(ccInstance));
   strncpy(recvInst->state, "Recv-Migration", CHAR_BUFFER_SIZE);
   recvInst->ncHostIdx = toIdx;
