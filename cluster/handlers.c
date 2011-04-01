@@ -2310,17 +2310,17 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
     sem_mypost(MIGRATE);
     return 1; //or whatever we want here
   }
-    
+
   //we need to find vm somehow (or a comparable representation of a nodes resources)
   (*vm) = migrationInst->ccvm;
-  
+
   //check if it has sufficient resources and decrement if it does
   if (destResource->state != RESDOWN) {
     sem_mywait(RESCACHE);
     mem = destResource->availMemory - vm->mem;
     disk = destResource->availDisk - vm->disk;
     cores = destResource->availCores - vm->cores;
-     
+
     if (!(mem >= 0 && disk >= 0 && cores >= 0)) {
       logprintfl(EUCAERROR, "doMigrateInstance(%s, %s, %s) failed, insufficient resources!\n", instanceId, from_node, to_node);
       sem_mypost(RESCACHE);
