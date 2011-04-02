@@ -325,7 +325,7 @@ void change_state(	ncInstance *instance,
         }
         break;
       default:
-        logprintfl (EUCAERROR, "Unexepected migration state (%d)\n", instance->migrationState);
+        logprintfl (EUCAERROR, "Unexpected migration state (%d)\n", instance->migrationState);
         return;
     }
 
