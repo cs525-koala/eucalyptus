@@ -531,7 +531,7 @@ doMigrateInstance(	struct nc_state_t *nc,
   }
 
   // Make sure we're in a migrate-able state
-  if (instance->state != RUNNING && instance->migrationState != NO_MIGRATION) {
+  if (instance->state != RUNNING || instance->migrationState != NO_MIGRATION) {
     logprintfl(EUCAFATAL, "Error: Instance %s cannot be migrated due to state (%d,%d)\n", instanceId, instance->state, instance->migrationState);
     return ERROR_FATAL;
   }
@@ -571,6 +571,11 @@ doMigrateInstance(	struct nc_state_t *nc,
   // Migrate!
   // TODO KOALA: This probably is a blocking call, and might block for some time.
   // Push this into a new thread in next iteration.
+
+  logprintfl(EUCAINFO, "MigrateInstance(): Setting instance %s to SEND_MIGRATION state\n", instanceId);
+  instance->migrationState = SEND_MIGRATION;
+
+  logprintfl(EUCAINFO, "MigrateInstance(): Attempting to migrate instance %s...\n", instanceId);
   unsigned long flags = VIR_MIGRATE_LIVE;
   virDomainPtr newdom = virDomainMigrate(
       dom,          /* Domain to migrate */
@@ -579,6 +584,17 @@ doMigrateInstance(	struct nc_state_t *nc,
       NULL,         /* Name to give at other end; NULL means leave it alone */
       migrationURI, /* URI from local node that indicates how to send to remote host */
       0);           /* Bandwidth -- 0 means 'pick a suitable default' */
+
+  if (!newdom) {
+    logprintfl(EUCAFATAL, "Error: Migration failed on instance %s\n", instanceId);
+
+    logprintfl(EUCAINFO, "MigrateInstance(): Setting instance %s to NO_MIGRATION state\n", instanceId);
+    instance->migrationState = NO_MIGRATION;
+
+    return ERROR_FATAL;
+  }
+
+  logprintfl(EUCAINFO, "MigrateInstance(): Migration (seems to be) successful!\n");
 
   return OK;
 }
