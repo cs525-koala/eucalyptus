@@ -200,12 +200,12 @@ char balanceSchedule(ccResourceCache * resCache, ccInstanceCache * instCache, sc
   // Sort resources, put largest resource first.
   qsort(nodes, resCount, sizeof(ccResource*), resourceSort);
 
-  char did_something;
+  char didSomething;
   do {
     // Go through each of the resources, and greedily assign the largest VM that fits
     // and keeps it under the balance.
 
-    did_something = 0;
+    didSomething = 0;
     for(i = 0; (i < resCount) && schedulableCount; ++i) {
       ccResource *targetResource = nodes[i];
 
@@ -229,9 +229,9 @@ char balanceSchedule(ccResourceCache * resCache, ccInstanceCache * instCache, sc
         }
       }
       // If we found a VM, then this loop did something useful.
-      if (j != vmCount) did_something = 1;
+      if (j != vmCount) didSomething = 1;
     }
-  } while(did_something);
+  } while(didSomething);
 
   if (schedulableCount) {
     // Okay, we were unable to schedule VMs under the balance, which is expected.
