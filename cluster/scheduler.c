@@ -96,25 +96,25 @@ void *scheduler_thread(void * unused) {
 }
 
 // Compute the theoretical cores utilization percentage
-double balanceLevelCores(ccResourceCache * RC) {
+double balanceLevelCores(ccResourceCache * resCache) {
   int i;
 
   int usedCores = 0, maxCores = 0;
-  for (i = 0; i < RC->numResources; ++i) {
-    ccResource * R = &(RC->resources[i]);
-    usedCores += (R->maxCores - R->availCores);
-    maxCores += R->maxCores;
+  for (i = 0; i < resCache->numResources; ++i) {
+    ccResource * resource = &(resCache->resources[i]);
+    usedCores += (resource->maxCores - resource->availCores);
+    maxCores += resource->maxCores;
   }
 
   return (double)usedCores / (double)maxCores;
 }
 
-char doesVMFit(ccInstance * VM, ccResource * R, double balance) {
+char doesVMFit(ccInstance * VM, ccResource * resource, double balance) {
 
-  int coresUsed = R->maxCores - R->availCores;
+  int coresUsed = resource->maxCores - resource->availCores;
   int newCoresUsed = coresUsed + VM->ccvm.cores;
 
-  double newBalance = (double)newCoresUsed / (double)R->maxCores;
+  double newBalance = (double)newCoresUsed / (double)resource->maxCores;
 
   return newBalance < balance;
 }
