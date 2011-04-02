@@ -643,10 +643,17 @@ long long scFSCK (bunchOfInstances ** instances)
                 continue;
             }
 
+            // TODO KOALA: Don't nuke instances you find in the instances directory!
+            // In our architecture (atm) this is a shared directory, so don't delete
+            // the VM's out from other nodes!
+            // The TODO here is to figure out how to still remove corrupt/bad/old images
+            // (the reasoning behind this code existing in the first place)
+#if 0
             /* looks good - destroy it */
             if (vrun ("rm -rf %s", instance_path)) {
                 logprintfl (EUCAWARN, "warning: failed to remove %s\n", instance_path);
             }
+#endif
         }
         closedir (user_dir);
     }

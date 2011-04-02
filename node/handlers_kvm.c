@@ -155,7 +155,7 @@ doRunInstance (	struct nc_state_t *nc,
     instance = find_instance (&global_instances, instanceId);
     sem_v (inst_sem);
     if (instance) {
-        logprintfl (EUCAFATAL, "Error: instance %s already running\n", instanceId);
+        logprintfl (EUCAFATAL, "Error: We already have information for instance %s\n", instanceId);
         return 1; /* TODO: return meaningful error codes? */
     }
     if (!(instance = allocate_instance (instanceId, 
@@ -253,6 +253,7 @@ doReceiveMigrationInstance (	struct nc_state_t *nc,
         logprintfl (EUCAFATAL, "Error: instance %s already running\n", instanceId);
         return 1; /* TODO: return meaningful error codes? */
     }
+
     if (!(instance = allocate_instance (instanceId, 
                                         reservationId,
                                         params, 
@@ -267,9 +268,8 @@ doReceiveMigrationInstance (	struct nc_state_t *nc,
         logprintfl (EUCAFATAL, "Error: could not allocate instance struct\n");
         return 2;
     }
-    // XXX: Figure out what state this should go into, probably STAGING or similar
-    // with the migration state set as 'RM'
-    //change_state(instance, STAGING);
+    instance->migrationState = RECEIVE_MIGRATION;
+    instance->state = PAUSED; /* this _is_ the (libvirt) state koala should first see it in */
 
     sem_p (inst_sem); 
     error = add_instance (&global_instances, instance);
@@ -315,7 +315,7 @@ doReceiveMigrationInstance (	struct nc_state_t *nc,
 #endif
 
     * outInst = instance;
-    * listening_port = 1234; // XXX: Pick a port from a port reserve or similar.
+    * listening_port = 44444; // XXX: Pick a port from a port reserve or similar.
     return 0;
   //=============== From runInstance =====================
 }
@@ -531,7 +531,7 @@ doMigrateInstance(	struct nc_state_t *nc,
   }
 
   // Make sure we're in a migrate-able state
-  if (instance->state != RUNNING && instance->migrationState != NO_MIGRATION) {
+  if (instance->state != RUNNING || instance->migrationState != NO_MIGRATION) {
     logprintfl(EUCAFATAL, "Error: Instance %s cannot be migrated due to state (%d,%d)\n", instanceId, instance->state, instance->migrationState);
     return ERROR_FATAL;
   }
@@ -571,6 +571,11 @@ doMigrateInstance(	struct nc_state_t *nc,
   // Migrate!
   // TODO KOALA: This probably is a blocking call, and might block for some time.
   // Push this into a new thread in next iteration.
+
+  logprintfl(EUCAINFO, "MigrateInstance(): Setting instance %s to SEND_MIGRATION state\n", instanceId);
+  instance->migrationState = SEND_MIGRATION;
+
+  logprintfl(EUCAINFO, "MigrateInstance(): Attempting to migrate instance %s...\n", instanceId);
   unsigned long flags = VIR_MIGRATE_LIVE;
   virDomainPtr newdom = virDomainMigrate(
       dom,          /* Domain to migrate */
@@ -579,6 +584,20 @@ doMigrateInstance(	struct nc_state_t *nc,
       NULL,         /* Name to give at other end; NULL means leave it alone */
       migrationURI, /* URI from local node that indicates how to send to remote host */
       0);           /* Bandwidth -- 0 means 'pick a suitable default' */
+
+  if (!newdom) {
+    logprintfl(EUCAFATAL, "Error: Migration failed on instance %s\n", instanceId);
+
+    logprintfl(EUCAINFO, "MigrateInstance(): Setting instance %s to NO_MIGRATION state\n", instanceId);
+    instance->migrationState = NO_MIGRATION;
+
+    return ERROR_FATAL;
+  }
+
+  logprintfl(EUCAINFO, "MigrateInstance(): Migration (seems to be) successful!\n");
+
+  logprintfl(EUCAINFO, "MigrateInstance(): Moving VM to 'shutdown' state (preemptively)\n");
+  change_state(instance, SHUTDOWN);
 
   return OK;
 }

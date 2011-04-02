@@ -76,7 +76,7 @@ permission notice:
 #define OP_TIMEOUT_MIN 5
 
 enum {SHARED_MEM, SHARED_FILE};
-enum {INIT, CONFIG, VNET, INSTCACHE, RESCACHE, NCCALL, ENDLOCK};
+enum {INIT, CONFIG, VNET, INSTCACHE, RESCACHE, NCCALL, MIGRATE, ENDLOCK};
 
 typedef struct instance_t {
   char instanceId[16];

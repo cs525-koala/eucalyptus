@@ -200,6 +200,37 @@ check_hypervisor_conn()
 	return &(nc_state.conn);
 }
 
+int destroy_instance(ncInstance *instance) {
+  // TODO KOALA: We might need to take the inst_sem lock here,
+  // but we're called sometimes with it taken already, other times without.
+  // For now, just not worrying about it.
+
+  const char * instanceId = instance->instanceId;
+
+  virConnectPtr *conn = check_hypervisor_conn();
+  if (!conn) {
+    logprintfl(EUCAERROR, "Failed to connect to hypervisor\n");
+    return 1;
+  }
+
+  sem_p(hyp_sem);
+  virDomainPtr dom = virDomainLookupByName(*conn, instanceId);
+  sem_v(hyp_sem);
+  if (!dom) {
+    logprintfl(EUCAERROR, "Failed to find terminate instance %s\n", instanceId);
+    return 1;
+  }
+  if (conn) {
+    if (dom) {
+      sem_p(hyp_sem);
+      virDomainDestroy(dom);
+      sem_v(hyp_sem);
+    }
+  }
+
+  return 0;
+}
+
 
 void change_state(	ncInstance *instance,
 			instance_states state)
@@ -241,19 +272,25 @@ void change_state(	ncInstance *instance,
             instance->migrationState = NO_MIGRATION;
             instance->stateCode = EXTANT;
             logprintfl(EUCAFATAL, "Error: Invalid send migration state for instance %s\n", instance->instanceId);
-            // TODO KOALA: Tell libvirt to kill this instance, this is bad!
+
+            // This doesn't make sense, remove this!
+            if (destroy_instance(instance)) {
+              logprintfl(EUCAERROR, "Error: Invalid state for instance %s and failed to kill it\n", instance->instanceId);
+            }
             return;
           case RUNNING:
           case PAUSED: /* TODO KOALA: Maybe timeout if in this state too long? */
+            instance->stateCode = EX_SEND_MIGRATION;
+            instance->retries = LIBVIRT_QUERY_RETRIES;
+            break;
           case SHUTDOWN:
           case SHUTOFF:
           case CRASHED:
             instance->stateCode = EX_SEND_MIGRATION;
-            instance->retries = LIBVIRT_QUERY_RETRIES;
+            instance->retries = 0;
             break;
           case TEARDOWN:
-            instance->stateCode = TEARDOWN;
-            instance->migrationState = NO_MIGRATION;
+            instance->stateCode = EX_SEND_MIGRATION;
             break;
           default:
             logprintfl (EUCAERROR, "error: change_sate(): unexpected state (%d) for instance %s\n", instance->state, instance->instanceId);
@@ -271,7 +308,8 @@ void change_state(	ncInstance *instance,
             instance->stateCode = EX_RECEIVE_MIGRATION;
             break;
           case RUNNING:
-            // TODO KOALA: Move out of receive migration, we're done! \o/
+            instance->stateCode = EXTANT;
+            instance->migrationState = NO_MIGRATION;
             break;
           case SHUTDOWN:
           case SHUTOFF:
@@ -289,7 +327,7 @@ void change_state(	ncInstance *instance,
         }
         break;
       default:
-        logprintfl (EUCAERROR, "Unexepected migration state (%d)\n", instance->migrationState);
+        logprintfl (EUCAERROR, "Unexpected migration state (%d)\n", instance->migrationState);
         return;
     }
 
@@ -340,9 +378,9 @@ refresh_instance_info(	struct nc_state_t *nc,
     sem_v(hyp_sem);
     if (dom == NULL) { /* hypervisor doesn't know about it */
       if (now==RUNNING ||
-            now==BLOCKED ||
-            now==PAUSED ||
-            now==SHUTDOWN) {
+          now==BLOCKED ||
+          now==PAUSED  ||
+          now==SHUTDOWN) {
             /* Most likely the user has shut it down from the inside */
             if (instance->retries) {
 		instance->retries--;
@@ -519,7 +557,8 @@ monitoring_thread (void *arg)
 
             if (instance->state==TEARDOWN) {
                 /* it's been long enough, we can forget the instance */
-                if ((now - instance->terminationTime)>teardown_state_duration) {
+                // Alternatively, if a VM we migrated is in the TEARDOWN state, just remove it.
+                if (((now - instance->terminationTime)>teardown_state_duration) || (instance->migrationState == SEND_MIGRATION)) {
                     remove_instance (&global_instances, instance);
                     logprintfl (EUCAINFO, "forgetting about instance %s\n", instance->instanceId);
                     free_instance (&instance);
@@ -538,14 +577,14 @@ monitoring_thread (void *arg)
             // Only do so if we're not part of a migration...
             // TODO KOALA: This opens us up to the possibility that something fails miserably
             // and no one cleans up the files.  Fix this!
-            if (!nc_state.save_instance_files && instance->migrationState != NO_MIGRATION) {
-				logprintfl (EUCAINFO, "cleaning up state for instance %s\n", instance->instanceId);
+            if (!nc_state.save_instance_files && instance->migrationState == NO_MIGRATION) {
+              logprintfl (EUCAINFO, "cleaning up state for instance %s\n", instance->instanceId);
 	      if (scCleanupInstanceImage(instance->userId, instance->instanceId)) {
                 logprintfl (EUCAWARN, "warning: failed to cleanup instance image %s\n", instance->instanceId);
 	      }
-			} else {
-				logprintfl (EUCAINFO, "cleaning up state for instance %s (but keeping the files)\n", instance->instanceId);
-			}
+            } else {
+              logprintfl (EUCAINFO, "cleaning up state for instance %s (but keeping the files)\n", instance->instanceId);
+            }
             
             /* check to see if this is the last instance running on vlan */
             int left = 0;
