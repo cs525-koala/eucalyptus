@@ -2454,6 +2454,7 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
 
   sem_mypost(MIGRATE);
 
+  invalidate_instanceCache();
 
   logprintfl(EUCADEBUG,"MigrateInstance(): done.\n");
 
