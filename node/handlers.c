@@ -574,7 +574,7 @@ monitoring_thread (void *arg)
             // Only do so if we're not part of a migration...
             // TODO KOALA: This opens us up to the possibility that something fails miserably
             // and no one cleans up the files.  Fix this!
-            if (!nc_state.save_instance_files && instance->migrationState != NO_MIGRATION) {
+            if (!nc_state.save_instance_files && instance->migrationState == NO_MIGRATION) {
               logprintfl (EUCAINFO, "cleaning up state for instance %s\n", instance->instanceId);
 	      if (scCleanupInstanceImage(instance->userId, instance->instanceId)) {
                 logprintfl (EUCAWARN, "warning: failed to cleanup instance image %s\n", instance->instanceId);
