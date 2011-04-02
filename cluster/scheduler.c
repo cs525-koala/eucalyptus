@@ -44,7 +44,7 @@ char balanceSchedule(ccResourceCache *, ccInstanceCache *, scheduledVM*);
 scAlgo scheduler = balanceSchedule;
 
 
-static scheduler_config sc;
+static scheduler_config schedConfig;
 
 // Because I'm lazy
 #define logsc(LOGLEVEL, formatstr, ...) \
@@ -63,7 +63,7 @@ static void set_signal_handler(void) {
 // Read in the scheduler_config from disk.
 // For now, just set some default values.
 static void read_sc(void) {
-  sc.scheduling_frequency = 30; //every 30 seconds
+  schedConfig.scheduling_frequency = 30; //every 30 seconds
 }
 
 void *scheduler_thread(void * unused) {
@@ -89,7 +89,7 @@ void *scheduler_thread(void * unused) {
     shawn();
 
     logsc(EUCADEBUG, "done\n");
-    sleep(sc.scheduling_frequency);
+    sleep(schedConfig.scheduling_frequency);
   }
 
   return(NULL);
@@ -163,42 +163,42 @@ void schedule() {
   int i;
   for (i = 0; i < vmCount; ++i) {
     ccInstance * VM = schedule[i].instance;
-    ccResource * R = schedule[i].resource;
+    ccResource * currentResource = schedule[i].resource;
 
-    ccResource * C = &resourceCacheLocal.resources[VM->ncHostIdx];
-    if (C != R) {
+    ccResource * targetResource = &resourceCacheLocal.resources[VM->ncHostIdx];
+    if (currentResource != targetResource) {
       // TODO KOALA: Actually migrate things!
 
       // For now, just log the migration
       logsc(EUCAINFO, "Attempting to migrate %s from %s(%s) to %s(%s)\n",
                       VM->instanceId,
-                      R->hostname,
-                      R->ip,
-                      C->hostname,
-                      C->ip);
+                      currentResource->hostname,
+                      currentResource->ip,
+                      targetResource->hostname,
+                      targetResource->ip);
     }
   }
 
 }
 
-char balanceSchedule(ccResourceCache * RC, ccInstanceCache * IC, scheduledVM* schedule) {
+char balanceSchedule(ccResourceCache * resCache, ccInstanceCache * instCache, scheduledVM* schedule) {
   // TODO KOALA: Algorithm stability??
 
-  double balance = balanceLevelCores(RC);
+  double balance = balanceLevelCores(resCache);
 
-  int schedulableCount = IC->numInsts;
+  int schedulableCount = instCache->numInsts;
   const int vmCount = schedulableCount;
-  const int rCount = RC->numResources;
+  const int resCount = resCache->numResources;
 
   // List of vms we need to schedule.
   ccInstance * vms[vmCount];
-  ccResource * nodes[rCount];
+  ccResource * nodes[resCount];
   int i, j;
-  for (i = 0; i < vmCount; ++i) vms[i] = &IC->instances[i];
-  for (i = 0; i < rCount; ++i) nodes[i] = &RC->resources[i];
+  for (i = 0; i < vmCount; ++i) vms[i] = &instCache->instances[i];
+  for (i = 0; i < resCount; ++i) nodes[i] = &resCache->resources[i];
 
   // Sort resources, put largest resource first.
-  qsort(nodes, rCount, sizeof(ccResource*), resourceSort);
+  qsort(nodes, resCount, sizeof(ccResource*), resourceSort);
 
   char did_something;
   do {
@@ -206,8 +206,8 @@ char balanceSchedule(ccResourceCache * RC, ccInstanceCache * IC, scheduledVM* sc
     // and keeps it under the balance.
 
     did_something = 0;
-    for(i = 0; (i < rCount) && schedulableCount; ++i) {
-      ccResource *R = nodes[i];
+    for(i = 0; (i < resCount) && schedulableCount; ++i) {
+      ccResource *targetResource = nodes[i];
 
       // Get an ordering of the instances, most needy first.
       qsort(vms, schedulableCount, sizeof(ccInstance*), instanceSort);
@@ -216,10 +216,10 @@ char balanceSchedule(ccResourceCache * RC, ccInstanceCache * IC, scheduledVM* sc
       for (j = 0; j < vmCount; ++j) {
         ccInstance * VM = vms[j];
 
-        if (doesVMFit(VM, R, balance)) {
+        if (doesVMFit(VM, targetResource, balance)) {
           int index = vmCount - schedulableCount;
           schedule[index].instance = VM;
-          schedule[index].resource = R;
+          schedule[index].resource = targetResource;
 
           vms[j] = vms[schedulableCount-1];
           vms[schedulableCount-1] = VM;
@@ -237,8 +237,8 @@ char balanceSchedule(ccResourceCache * RC, ccInstanceCache * IC, scheduledVM* sc
     // Okay, we were unable to schedule VMs under the balance, which is expected.
     // However, each instance has to go *somewhere*!
 
-    for(i = 0; (i < rCount) && schedulableCount; ++i) {
-      ccResource *R = nodes[i];
+    for(i = 0; (i < resCount) && schedulableCount; ++i) {
+      ccResource *targetResource = nodes[i];
 
       // Get an ordering of the instances, most needy first.
       qsort(vms, schedulableCount, sizeof(ccInstance*), instanceSort);
@@ -247,10 +247,10 @@ char balanceSchedule(ccResourceCache * RC, ccInstanceCache * IC, scheduledVM* sc
       for (j = 0; j < vmCount; ++j) {
         ccInstance * VM = vms[j];
 
-        if (doesVMFit(VM, R, 1.0)) {
+        if (doesVMFit(VM, targetResource, 1.0)) {
           int index = vmCount - schedulableCount;
           schedule[index].instance = VM;
-          schedule[index].resource = R;
+          schedule[index].resource = targetResource;
 
           vms[j] = vms[schedulableCount-1];
           vms[schedulableCount-1] = VM;
