@@ -2454,8 +2454,6 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
 
   sem_mypost(MIGRATE);
 
-  invalidate_instanceCache();
-
   logprintfl(EUCADEBUG,"MigrateInstance(): done.\n");
 
   shawn();
@@ -3151,6 +3149,10 @@ int init_config(void) {
     }
   }
   if (tmpstr) free(tmpstr);
+
+  // Hardcode this for now.  Changing the config in our deployment is a pain, and this gets the job done.
+  // TODO KOALA -- Just remember that we changed this and how that might influence things.
+  instanceTimeout = 5;
 
   // WS-Security
   use_wssec = 0;
