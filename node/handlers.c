@@ -241,7 +241,7 @@ void change_state(	ncInstance *instance,
             instance->migrationState = NO_MIGRATION;
             instance->stateCode = EXTANT;
             logprintfl(EUCAFATAL, "Error: Invalid send migration state for instance %s\n", instance->instanceId);
-            // TODO KOALA: Tell libvirt to kill this instance, this is bad!
+            // TODO KOALA: Tell libvirt to kill this instance, this is bad! Find_and_terminate_instance (in handlers_default.c) sort of does this, but isn't in the namespace.
             return;
           case RUNNING:
           case PAUSED: /* TODO KOALA: Maybe timeout if in this state too long? */
@@ -271,7 +271,8 @@ void change_state(	ncInstance *instance,
             instance->stateCode = EX_RECEIVE_MIGRATION;
             break;
           case RUNNING:
-            // TODO KOALA: Move out of receive migration, we're done! \o/
+            instance->stateCode = EXTANT;
+            instance->migrationState = NO_MIGRATION;
             break;
           case SHUTDOWN:
           case SHUTOFF:
@@ -340,9 +341,9 @@ refresh_instance_info(	struct nc_state_t *nc,
     sem_v(hyp_sem);
     if (dom == NULL) { /* hypervisor doesn't know about it */
       if (now==RUNNING ||
-            now==BLOCKED ||
-            now==PAUSED ||
-            now==SHUTDOWN) {
+          now==BLOCKED ||
+          now==PAUSED  ||
+          now==SHUTDOWN) {
             /* Most likely the user has shut it down from the inside */
             if (instance->retries) {
 		instance->retries--;
@@ -539,13 +540,13 @@ monitoring_thread (void *arg)
             // TODO KOALA: This opens us up to the possibility that something fails miserably
             // and no one cleans up the files.  Fix this!
             if (!nc_state.save_instance_files && instance->migrationState != NO_MIGRATION) {
-				logprintfl (EUCAINFO, "cleaning up state for instance %s\n", instance->instanceId);
+              logprintfl (EUCAINFO, "cleaning up state for instance %s\n", instance->instanceId);
 	      if (scCleanupInstanceImage(instance->userId, instance->instanceId)) {
                 logprintfl (EUCAWARN, "warning: failed to cleanup instance image %s\n", instance->instanceId);
 	      }
-			} else {
-				logprintfl (EUCAINFO, "cleaning up state for instance %s (but keeping the files)\n", instance->instanceId);
-			}
+            } else {
+              logprintfl (EUCAINFO, "cleaning up state for instance %s (but keeping the files)\n", instance->instanceId);
+            }
             
             /* check to see if this is the last instance running on vlan */
             int left = 0;

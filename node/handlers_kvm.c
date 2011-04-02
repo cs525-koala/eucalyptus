@@ -269,6 +269,7 @@ doReceiveMigrationInstance (	struct nc_state_t *nc,
         return 2;
     }
     instance->migrationState = RECEIVE_MIGRATION;
+    instance->state = PAUSED; /* this _is_ the (libvirt) state koala should first see it in */
 
     sem_p (inst_sem); 
     error = add_instance (&global_instances, instance);
