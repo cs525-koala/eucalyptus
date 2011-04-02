@@ -280,11 +280,14 @@ void change_state(	ncInstance *instance,
             return;
           case RUNNING:
           case PAUSED: /* TODO KOALA: Maybe timeout if in this state too long? */
+            instance->stateCode = EX_SEND_MIGRATION;
+            instance->retries = LIBVIRT_QUERY_RETRIES;
+            break;
           case SHUTDOWN:
           case SHUTOFF:
           case CRASHED:
             instance->stateCode = EX_SEND_MIGRATION;
-            instance->retries = LIBVIRT_QUERY_RETRIES;
+            instance->retries = 0
             break;
           case TEARDOWN:
             instance->stateCode = TEARDOWN;
