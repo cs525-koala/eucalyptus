@@ -3143,9 +3143,10 @@ int init_config(void) {
     tmpstr = NULL;
   } else {
     instanceTimeout = atoi(tmpstr);
-    if (instanceTimeout < 30) {
-      logprintfl(EUCAWARN, "init_config(): INSTANCE_TIMEOUT set too low (%d seconds), resetting to minimum (30 seconds)\n", instanceTimeout);
-      instanceTimeout = 30;
+    // Kevin: This used to be 30 seconds.
+    if (instanceTimeout < 5) {
+      logprintfl(EUCAWARN, "init_config(): INSTANCE_TIMEOUT set too low (%d seconds), resetting to minimum (5 seconds)\n", instanceTimeout);
+      instanceTimeout = 5;
     }
   }
   if (tmpstr) free(tmpstr);
