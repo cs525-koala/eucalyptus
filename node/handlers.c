@@ -200,6 +200,37 @@ check_hypervisor_conn()
 	return &(nc_state.conn);
 }
 
+int destroy_instance(ncInstance *instance) {
+  // TODO KOALA: We might need to take the inst_sem lock here,
+  // but we're called sometimes with it taken already, other times without.
+  // For now, just not worrying about it.
+
+  const char * instanceId = instance->instanceId;
+
+  virConnectPtr *conn = check_hypervisor_conn();
+  if (!conn) {
+    logprintfl(EUCAERROR, "Failed to connect to hypervisor\n");
+    return 1;
+  }
+
+  sem_p(hyp_sem);
+  virDomainPtr dom = virDomainLookupByName(*conn, instanceId);
+  sem_v(hyp_sem);
+  if (!dom) {
+    logprintfl(EUCAERROR, "Failed to find terminate instance %s\n", instanceId);
+    return 1;
+  }
+  if (conn) {
+    if (dom) {
+      sem_p(hyp_sem);
+      virDomainDestroy(dom);
+      sem_v(hyp_sem);
+    }
+  }
+
+  return 0;
+}
+
 
 void change_state(	ncInstance *instance,
 			instance_states state)
@@ -241,7 +272,11 @@ void change_state(	ncInstance *instance,
             instance->migrationState = NO_MIGRATION;
             instance->stateCode = EXTANT;
             logprintfl(EUCAFATAL, "Error: Invalid send migration state for instance %s\n", instance->instanceId);
-            // TODO KOALA: Tell libvirt to kill this instance, this is bad! Find_and_terminate_instance (in handlers_default.c) sort of does this, but isn't in the namespace.
+
+            // This doesn't make sense, remove this!
+            if (destroy_instance(instance)) {
+              logprintfl(EUCAERROR, "Error: Invalid state for instance %s and failed to kill it\n", instance->instanceId);
+            }
             return;
           case RUNNING:
           case PAUSED: /* TODO KOALA: Maybe timeout if in this state too long? */
