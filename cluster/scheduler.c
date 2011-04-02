@@ -30,8 +30,8 @@ static void schedule(void);
 
 // "Knobs" go here.
 typedef struct {
-  int scheduling_frequency;
-} scheduler_config;
+  int schedFreq;
+} schedConfig_t;
 
 typedef struct {
   ccInstance * instance;
@@ -44,13 +44,13 @@ char balanceSchedule(ccResourceCache *, ccInstanceCache *, scheduledVM*);
 scAlgo scheduler = balanceSchedule;
 
 
-static scheduler_config schedConfig;
+static schedConfig_t schedConfig;
 
 // Because I'm lazy
 #define logsc(LOGLEVEL, formatstr, ...) \
-  logprintfl(LOGLEVEL, "scheduler_thread(): " formatstr, ##__VA_ARGS__)
+  logprintfl(LOGLEVEL, "schedulerThread(): " formatstr, ##__VA_ARGS__)
 
-static void set_signal_handler(void) {
+static void setSignalHandler(void) {
   // set up default signal handler for this child process (for SIGTERM)
   struct sigaction newsigact;
   newsigact.sa_handler = SIG_DFL;
@@ -62,11 +62,11 @@ static void set_signal_handler(void) {
 
 // Read in the scheduler_config from disk.
 // For now, just set some default values.
-static void read_sched_config(void) {
-  schedConfig.scheduling_frequency = 30; //every 30 seconds
+static void readSchedConfig(void) {
+  schedConfig.schedFreq = 30; //every 30 seconds
 }
 
-void *scheduler_thread(void * unused) {
+void *schedulerThread(void * unused) {
   int rc;
   ncMetadata ccMeta;
   ccMeta.correlationId = strdup("scheduler");
@@ -77,22 +77,25 @@ void *scheduler_thread(void * unused) {
     unlock_exit(1);
   }
 
-  read_sched_config();
+  readSchedConfig();
 
   while(1) {
-    set_signal_handler();
 
     logsc(EUCADEBUG, "running\n");
+    logsc(EUCADEBUG, "Calling 'schedule()...\n");
 
     schedule();
 
     shawn();
 
-    logsc(EUCADEBUG, "done\n");
-    sleep(schedConfig.scheduling_frequency);
+    logsc(EUCADEBUG, "done, sleeping for %d\n", schedConfig.schedFreq);
+
+    sleep(schedConfig.schedFreq);
   }
 
-  return(NULL);
+
+
+  return NULL;
 }
 
 // Compute the theoretical cores utilization percentage
@@ -137,22 +140,27 @@ static int resourceSort(const void * v1, const void * v2) {
 }
 
 void schedule() {
-  ccResourceCache resourceCacheLocal;
-  ccInstanceCache instanceCacheLocal;
+  static ccResourceCache resourceCacheLocal;
+  static ccInstanceCache instanceCacheLocal;
 
+  logsc(EUCADEBUG, "Entered schedule!\n");
+
+  logsc(EUCADEBUG, "Getting rescache lock...\n");
   sem_mywait(RESCACHE);
   memcpy(&resourceCacheLocal, resourceCache, sizeof(ccResourceCache));
   sem_mypost(RESCACHE);
+  logsc(EUCADEBUG, "Getting instcache lock...\n");
   sem_mywait(INSTCACHE);
   memcpy(&instanceCacheLocal, instanceCache, sizeof(ccInstanceCache));
   sem_mypost(INSTCACHE);
+  logsc(EUCADEBUG, "Locks released, instance/resource cache copied!\n");
 
   const int vmCount = instanceCacheLocal.numInsts;
   scheduledVM schedule[vmCount];
 
   // Call our scheduler...
   char result = scheduler(&resourceCacheLocal, &instanceCacheLocal, &schedule[0]);
-  if (!result) {
+  if (result) {
     logsc(EUCAERROR, "Failed to schedule, ignoring\n");
     return;
   }
@@ -178,9 +186,9 @@ void schedule() {
                       targetResource->ip);
     }
   }
-
 }
 
+// 0 on success, error code on failure.
 char balanceSchedule(ccResourceCache * resCache, ccInstanceCache * instCache, scheduledVM* schedule) {
   // TODO KOALA: Algorithm stability??
 
@@ -225,11 +233,13 @@ char balanceSchedule(ccResourceCache * resCache, ccInstanceCache * instCache, sc
           vms[schedulableCount-1] = VM;
 
           schedulableCount--;
+          didSomething = 1;
+          logsc(EUCADEBUG, "Fitting %s to %s\n",
+              VM->instanceId,
+              targetResource->hostname);
           break;
         }
       }
-      // If we found a VM, then this loop did something useful.
-      if (j != vmCount) didSomething = 1;
     }
   } while(didSomething);
 

@@ -17,6 +17,6 @@
 
 #ifndef _SCHEDULER_H_
 
-void *scheduler_thread(void *);
+void *schedulerThread(void *);
 
 #endif // _SCHEDULER_H_
