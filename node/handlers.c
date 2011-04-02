@@ -290,8 +290,7 @@ void change_state(	ncInstance *instance,
             instance->retries = 0;
             break;
           case TEARDOWN:
-            instance->stateCode = TEARDOWN;
-            instance->migrationState = NO_MIGRATION;
+            instance->stateCode = EX_SEND_MIGRATION;
             break;
           default:
             logprintfl (EUCAERROR, "error: change_sate(): unexpected state (%d) for instance %s\n", instance->state, instance->instanceId);
