@@ -596,6 +596,9 @@ doMigrateInstance(	struct nc_state_t *nc,
 
   logprintfl(EUCAINFO, "MigrateInstance(): Migration (seems to be) successful!\n");
 
+  logprintfl(EUCAINFO, "MigrateInstance(): Moving VM to 'shutdown' state (preemptively)\n");
+  change_state(instance, SHUTDOWN);
+
   return OK;
 }
 
