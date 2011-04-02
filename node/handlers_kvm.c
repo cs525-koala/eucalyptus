@@ -155,7 +155,7 @@ doRunInstance (	struct nc_state_t *nc,
     instance = find_instance (&global_instances, instanceId);
     sem_v (inst_sem);
     if (instance) {
-        logprintfl (EUCAFATAL, "Error: instance %s already running\n", instanceId);
+        logprintfl (EUCAFATAL, "Error: We already have information for instance %s\n", instanceId);
         return 1; /* TODO: return meaningful error codes? */
     }
     if (!(instance = allocate_instance (instanceId, 
