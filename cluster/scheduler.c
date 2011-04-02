@@ -62,7 +62,7 @@ static void set_signal_handler(void) {
 
 // Read in the scheduler_config from disk.
 // For now, just set some default values.
-static void read_sc(void) {
+static void read_sched_config(void) {
   schedConfig.scheduling_frequency = 30; //every 30 seconds
 }
 
@@ -77,7 +77,7 @@ void *scheduler_thread(void * unused) {
     unlock_exit(1);
   }
 
-  read_sc();
+  read_sched_config();
 
   while(1) {
     set_signal_handler();
