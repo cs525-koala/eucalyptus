@@ -287,7 +287,7 @@ void change_state(	ncInstance *instance,
           case SHUTOFF:
           case CRASHED:
             instance->stateCode = EX_SEND_MIGRATION;
-            instance->retries = 0
+            instance->retries = 0;
             break;
           case TEARDOWN:
             instance->stateCode = TEARDOWN;
