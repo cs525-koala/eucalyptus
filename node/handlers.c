@@ -555,7 +555,8 @@ monitoring_thread (void *arg)
 
             if (instance->state==TEARDOWN) {
                 /* it's been long enough, we can forget the instance */
-                if ((now - instance->terminationTime)>teardown_state_duration) {
+                // Alternatively, if a VM we migrated is in the TEARDOWN state, just remove it.
+                if (((now - instance->terminationTime)>teardown_state_duration) || (instance->migrationState == SEND_MIGRATION)) {
                     remove_instance (&global_instances, instance);
                     logprintfl (EUCAINFO, "forgetting about instance %s\n", instance->instanceId);
                     free_instance (&instance);
