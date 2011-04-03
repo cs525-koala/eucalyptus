@@ -154,6 +154,11 @@ void schedule(ncMetadata * ccMeta) {
   }
 }
 
+char isSchedulable(ccInstance *inst) {
+  // An instance is only schedulable if it's running
+  return inst && !strcmp(inst->state, "Running");
+}
+
 // Return comparison function of the two.
 // For now, returns their core utilization
 // Result is >=0 is 'resource1' is 'more used' than 'resource2'
@@ -201,6 +206,8 @@ int balanceScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, sc
     for(i = 0; i < instCache->numInsts; ++i) {
       ccInstance * curInst = &instCache->instances[i];
       ccResource * curResource = &resCache->resources[curInst->ncHostIdx];
+
+      if (!isSchedulable(curInst)) continue;
 
       // If this is an instance running on 'mostUsedResource'
       if (curResource == mostUsedResource) {
@@ -259,6 +266,8 @@ int funScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, schedu
     for (i = 0; i < instCache->numInsts; ++i) {
       ccInstance * curInst = &instCache->instances[i];
       ccResource * curResource = &resCache->resources[curInst->ncHostIdx];
+
+      if (!isSchedulable(curInst)) continue;
 
       // If this is an instance running on 'mostUsedResource'
       if (curResource == mostUsedResource) {
@@ -327,6 +336,8 @@ int groupingScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, s
   for(i = 0; i < instCache->numInsts; ++i) {
     ccInstance * curInst = &instCache->instances[i];
     ccResource * curResource = &resCache->resources[curInst->ncHostIdx];
+
+    if (!isSchedulable(curInst)) continue;
 
     // If this is an instance running on 'leastUsedResource'
     if (curResource == leastUsedResource) {
