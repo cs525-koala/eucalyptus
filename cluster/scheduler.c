@@ -40,8 +40,9 @@ typedef struct {
 
 typedef int (*scAlgo)(ccResourceCache *, ccInstanceCache *, scheduledVM *);
 
-int balanceSchedule(ccResourceCache *, ccInstanceCache *, scheduledVM*);
-scAlgo scheduler = balanceSchedule;
+int balanceScheduler(ccResourceCache *, ccInstanceCache *, scheduledVM*);
+int funScheduler(ccResourceCache *, ccInstanceCache *, scheduledVM*);
+scAlgo scheduler = funScheduler;
 
 
 static schedConfig_t schedConfig;
@@ -163,7 +164,7 @@ double balanceCompare(ccResource * resource1, ccResource * resource2) {
 }
 
 // Returns count of VMs the scheduler wants to move.
-int balanceSchedule(ccResourceCache * resCache, ccInstanceCache * instCache, scheduledVM* schedule) {
+int balanceScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, scheduledVM* schedule) {
   // TODO KOALA: Algorithm stability??
 
   const int resCount = resCache->numResources;
@@ -229,3 +230,61 @@ int balanceSchedule(ccResourceCache * resCache, ccInstanceCache * instCache, sch
   return 0;
 }
 
+// Returns count of VMs the scheduler wants to move.
+// This schedule is just to have fun while we're writing the paper O:)
+int funScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, scheduledVM* schedule) {
+
+  const int resCount = resCache->numResources;
+
+  int i, j;
+
+  // Find most used resource...
+  ccResource *mostUsedResource = NULL;
+  for (i = 0; i < resCount; ++i) {
+    ccResource * curResource = &resCache->resources[i];
+    logsc(EUCADEBUG, "Looking at %s (Util %f)\n",
+        curResource->hostname, resourceCoreUtil(curResource));
+
+    if (!mostUsedResource || (balanceCompare(curResource, mostUsedResource) > 0.0)) {
+      mostUsedResource = curResource;
+    }
+
+  }
+
+  if (mostUsedResource) logsc(EUCADEBUG, "Most used resource is %s\n", mostUsedResource->hostname);
+
+  if (mostUsedResource) {
+
+    for (i = 0; i < instCache->numInsts; ++i) {
+      ccInstance * curInst = &instCache->instances[i];
+      ccResource * curResource = &resCache->resources[curInst->ncHostIdx];
+
+      // If this is an instance running on 'mostUsedResource'
+      if (curResource == mostUsedResource) {
+
+        // Find some resource that can take it...
+        for (j = 0; j < resCache->numResources; ++j) {
+          // Skip over the one we're hoping to migrate *from*
+          if(j == curInst->ncHostIdx) continue;
+
+          ccResource * targetResource = &resCache->resources[j];
+
+          int newCoresUsed = targetResource->maxCores - targetResource->availCores + curInst->ccvm.cores;
+          double newUtil = (double)newCoresUsed / (double)targetResource->maxCores;
+
+          // Can this resource take the VM in question?
+          if (newUtil < 1.0) {
+            // Okay, we have a winner!
+            schedule[0].instance = curInst;
+            schedule[0].resource = targetResource;
+
+            return 1; // We found 1 VM to move.
+          }
+        }
+      }
+    }
+  }
+
+  // If we got this far, we didn't find something to schedule.  Better luck next time!
+  return 0;
+}
