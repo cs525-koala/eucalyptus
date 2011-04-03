@@ -278,7 +278,7 @@ int funScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, schedu
 
   const int resCount = resCache->numResources;
 
-  int i, j;
+  int i, j, k;
 
 
   int * instOrder = randomizedOrder(instCache->numInsts);
@@ -289,13 +289,16 @@ int funScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, schedu
   // Find a resource to migrate from...
   ccResource *sourceResource = NULL;
   for (i = 0; i < resCount; ++i) {
-    ccResource * curResource = &resCache->resources[resOrder[i]];
+    ccResource * sourceResource = &resCache->resources[resOrder[i]];
+    logsc(EUCADEBUG, "Looking at %s\n", sourceResource->hostname);
 
     // Go through all instances, considering those that are on sourceResource
     // (no good way to just get resource->instance listing)
-    for (i = 0; i < instCache->numInsts; ++i) {
-      ccInstance * curInst = &instCache->instances[instOrder[i]];
+    for (j = 0; j < instCache->numInsts; ++j) {
+      ccInstance * curInst = &instCache->instances[instOrder[j]];
       ccResource * curResource = &resCache->resources[curInst->ncHostIdx];
+
+      logsc(EUCADEBUG, "Looking at %s (on %s)\n", curInst->instanceId, curResource->hostname);
 
       if (!isSchedulable(curInst)) continue;
 
@@ -303,11 +306,12 @@ int funScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, schedu
       if (curResource == sourceResource) {
 
         // Find some resource that can take it...
-        for (j = 0; j < resCache->numResources; ++j) {
-          // Skip over the one we're hoping to migrate *from*
-          if(j == curInst->ncHostIdx) continue;
+        for (k = 0; k < resCache->numResources; ++k) {
 
-          ccResource * targetResource = &resCache->resources[resOrder2[j]];
+          ccResource * targetResource = &resCache->resources[resOrder2[k]];
+
+          // Skip over the one we're hoping to migrate *from*
+          if (targetResource == sourceResource) continue;
 
           int newCoresUsed = targetResource->maxCores - targetResource->availCores + curInst->ccvm.cores;
           double newUtil = (double)newCoresUsed / (double)targetResource->maxCores;
