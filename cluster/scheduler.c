@@ -38,9 +38,9 @@ typedef struct {
   ccResource * resource;
 } scheduledVM;
 
-typedef char (*scAlgo)(ccResourceCache *, ccInstanceCache *, scheduledVM *);
+typedef int (*scAlgo)(ccResourceCache *, ccInstanceCache *, scheduledVM *);
 
-char balanceSchedule(ccResourceCache *, ccInstanceCache *, scheduledVM*);
+int balanceSchedule(ccResourceCache *, ccInstanceCache *, scheduledVM*);
 scAlgo scheduler = balanceSchedule;
 
 
@@ -82,7 +82,6 @@ void *schedulerThread(void * unused) {
   while(1) {
 
     logsc(EUCADEBUG, "running\n");
-    logsc(EUCADEBUG, "Calling 'schedule()...\n");
 
     schedule();
 
@@ -98,70 +97,24 @@ void *schedulerThread(void * unused) {
   return NULL;
 }
 
-// Compute the theoretical cores utilization percentage
-double balanceLevelCores(ccResourceCache * resCache) {
-  int i;
-
-  int usedCores = 0, maxCores = 0;
-  for (i = 0; i < resCache->numResources; ++i) {
-    ccResource * resource = &(resCache->resources[i]);
-    usedCores += (resource->maxCores - resource->availCores);
-    maxCores += resource->maxCores;
-  }
-
-  return (double)usedCores / (double)maxCores;
-}
-
-char doesVMFit(ccInstance * VM, ccResource * resource, double balance) {
-
-  int coresUsed = resource->maxCores - resource->availCores;
-  int newCoresUsed = coresUsed + VM->ccvm.cores;
-
-  double newBalance = (double)newCoresUsed / (double)resource->maxCores;
-
-  return newBalance < balance;
-}
-
-// Sort to put the largest vm first.
-static int instanceSort(const void * v1, const void * v2) {
-  const ccInstance **vm1 = (const ccInstance**)v1;
-  const ccInstance **vm2 = (const ccInstance**)v2;
-  return (*vm2)->ccvm.cores - (*vm1)->ccvm.cores;
-}
-
-static int resourceSort(const void * v1, const void * v2) {
-  const ccResource **r1 = (const ccResource**)v1;
-  const ccResource **r2 = (const ccResource**)v2;
-
-  int usedCores1 = (*r1)->maxCores - (*r1)->availCores;
-  int usedCores2 = (*r2)->maxCores - (*r2)->availCores;
-
-  return usedCores2 - usedCores1;
-}
-
 void schedule() {
   static ccResourceCache resourceCacheLocal;
   static ccInstanceCache instanceCacheLocal;
 
-  logsc(EUCADEBUG, "Entered schedule!\n");
-
-  logsc(EUCADEBUG, "Getting rescache lock...\n");
   sem_mywait(RESCACHE);
   memcpy(&resourceCacheLocal, resourceCache, sizeof(ccResourceCache));
   sem_mypost(RESCACHE);
-  logsc(EUCADEBUG, "Getting instcache lock...\n");
   sem_mywait(INSTCACHE);
   memcpy(&instanceCacheLocal, instanceCache, sizeof(ccInstanceCache));
   sem_mypost(INSTCACHE);
-  logsc(EUCADEBUG, "Locks released, instance/resource cache copied!\n");
 
   const int vmCount = instanceCacheLocal.numInsts;
   scheduledVM schedule[vmCount];
 
   // Call our scheduler...
-  char result = scheduler(&resourceCacheLocal, &instanceCacheLocal, &schedule[0]);
-  if (result) {
-    logsc(EUCAERROR, "Failed to schedule, ignoring\n");
+  int count = scheduler(&resourceCacheLocal, &instanceCacheLocal, &schedule[0]);
+  if (count == 0) {
+    logsc(EUCAINFO, "No nodes scheduled\n");
     return;
   }
 
@@ -169,115 +122,102 @@ void schedule() {
   // the new schedule.
 
   int i;
-  for (i = 0; i < vmCount; ++i) {
+  for (i = 0; i < count; ++i) {
     ccInstance * VM = schedule[i].instance;
     ccResource * currentResource = schedule[i].resource;
 
     ccResource * targetResource = &resourceCacheLocal.resources[VM->ncHostIdx];
-    if (currentResource != targetResource) {
-      // TODO KOALA: Actually migrate things!
-
-      // For now, just log the migration
-      logsc(EUCAINFO, "Attempting to migrate %s from %s(%s) to %s(%s)\n",
-                      VM->instanceId,
-                      currentResource->hostname,
-                      currentResource->ip,
-                      targetResource->hostname,
-                      targetResource->ip);
+    if (currentResource == targetResource) {
+      logsc(EUCAERROR, "Scheduler indicated we should move %s to resource %s that it's already on??",
+          VM->instanceId, currentResource->hostname);
+      return;
     }
+
+    // TODO KOALA: Actually migrate things!
+
+    // For now, just log the migration
+    logsc(EUCAINFO, "Attempting to migrate %s from %s(%s) to %s(%s)\n",
+        VM->instanceId,
+        currentResource->hostname,
+        currentResource->ip,
+        targetResource->hostname,
+        targetResource->ip);
   }
 }
 
-// 0 on success, error code on failure.
-char balanceSchedule(ccResourceCache * resCache, ccInstanceCache * instCache, scheduledVM* schedule) {
+// Return comparison function of the two.
+// For now, returns their core utilization
+// Result is >=0 is 'resource1' is 'more used' than 'resource2'
+double resourceCoreUtil(ccResource * R) { return (double)(R->maxCores - R->availCores) / (double)R->maxCores; }
+double balanceCompare(ccResource * resource1, ccResource * resource2) {
+  double util1 = resourceCoreUtil(resource1);
+  double util2 = resourceCoreUtil(resource2);
+  return util1 - util2;
+}
+
+// Returns count of VMs the scheduler wants to move.
+int balanceSchedule(ccResourceCache * resCache, ccInstanceCache * instCache, scheduledVM* schedule) {
   // TODO KOALA: Algorithm stability??
 
-  double balance = balanceLevelCores(resCache);
-
-  int schedulableCount = instCache->numInsts;
-  const int vmCount = schedulableCount;
   const int resCount = resCache->numResources;
 
-  // List of vms we need to schedule.
-  ccInstance * vms[vmCount];
-  ccResource * nodes[resCount];
-  int i, j;
-  for (i = 0; i < vmCount; ++i) vms[i] = &instCache->instances[i];
-  for (i = 0; i < resCount; ++i) nodes[i] = &resCache->resources[i];
+  // Simple algorithm:
+  // Find the 'least' used host, and the 'most' used host, and move a VM from the most to the least.
 
-  // Sort resources, put largest resource first.
-  qsort(nodes, resCount, sizeof(ccResource*), resourceSort);
+  int i;
 
-  char didSomething;
-  do {
-    // Go through each of the resources, and greedily assign the largest VM that fits
-    // and keeps it under the balance.
+  // Find most and least used resources...
+  ccResource *mostUsedResource = NULL, *leastUsedResource = NULL;
+  for (i = 0; i < resCount; ++i) {
+    ccResource * curResource = &resCache->resources[i];
+    logsc(EUCAINFO, "Looking at %s\n", curResource->hostname);
 
-    didSomething = 0;
-    for(i = 0; (i < resCount) && schedulableCount; ++i) {
-      ccResource *targetResource = nodes[i];
-
-      // Get an ordering of the instances, most needy first.
-      qsort(vms, schedulableCount, sizeof(ccInstance*), instanceSort);
-
-      // Pick the first VM that fits, and schedule it to this resource.
-      for (j = 0; j < vmCount; ++j) {
-        ccInstance * VM = vms[j];
-
-        if (doesVMFit(VM, targetResource, balance)) {
-          int index = vmCount - schedulableCount;
-          schedule[index].instance = VM;
-          schedule[index].resource = targetResource;
-
-          vms[j] = vms[schedulableCount-1];
-          vms[schedulableCount-1] = VM;
-
-          schedulableCount--;
-          didSomething = 1;
-          logsc(EUCADEBUG, "Fitting %s to %s\n",
-              VM->instanceId,
-              targetResource->hostname);
-          break;
-        }
-      }
+    if (!mostUsedResource || (balanceCompare(curResource, mostUsedResource) > 0.0)) {
+      mostUsedResource = curResource;
     }
-  } while(didSomething);
+    if (!leastUsedResource || (balanceCompare(curResource, leastUsedResource) < 0.0)) {
+      leastUsedResource = curResource;
+    }
 
-  if (schedulableCount) {
-    // Okay, we were unable to schedule VMs under the balance, which is expected.
-    // However, each instance has to go *somewhere*!
+  }
 
-    for(i = 0; (i < resCount) && schedulableCount; ++i) {
-      ccResource *targetResource = nodes[i];
+  if (mostUsedResource) logsc(EUCAINFO, "Most used resource is %s\n", mostUsedResource->hostname);
+  if (leastUsedResource) logsc(EUCAINFO, "Least used resource is %s\n", leastUsedResource->hostname);
 
-      // Get an ordering of the instances, most needy first.
-      qsort(vms, schedulableCount, sizeof(ccInstance*), instanceSort);
+  if (mostUsedResource && leastUsedResource && (mostUsedResource != leastUsedResource)) {
+    // TODO KOALA: Try to find 'largest' such instance?
+    // For now, just find any instance that is 'worth' moving
 
-      // Pick the first VM that fits, and schedule it to this resource.
-      for (j = 0; j < vmCount; ++j) {
-        ccInstance * VM = vms[j];
+    for(i = 0; i < instCache->numInsts; ++i) {
+      ccInstance * curInst = &instCache->instances[i];
+      ccResource * curResource = &resCache->resources[i];
 
-        if (doesVMFit(VM, targetResource, 1.0)) {
-          int index = vmCount - schedulableCount;
-          schedule[index].instance = VM;
-          schedule[index].resource = targetResource;
+      // If this is an instance running on 'mostUsedResource'
+      if (curResource == mostUsedResource) {
+        // Is this worth moving?
 
-          vms[j] = vms[schedulableCount-1];
-          vms[schedulableCount-1] = VM;
+        double util1 = resourceCoreUtil(mostUsedResource);
+        double util2 = resourceCoreUtil(leastUsedResource);
 
-          schedulableCount--;
-          break;
+        int newCoresUsed = leastUsedResource->maxCores - leastUsedResource->availCores + curInst->ccvm.cores;
+        double newUtil = (double)newCoresUsed / (double)leastUsedResource->maxCores;
+
+        logsc(EUCADEBUG, "Cores: %d, %d, %d\n", leastUsedResource->maxCores, leastUsedResource->availCores, curInst->ccvm.cores);
+        logsc(EUCADEBUG, "Util1: %f, Util2: %f, newUtil: %f\n", util1, util2, newUtil);
+
+        if((util1 > newUtil) // Does moving this make sense? This check should also provide some sense of stability.
+            && (newUtil < 1.0)) { // Can this node receive this VM?
+          // Okay, we have a winner!
+          schedule[0].instance = curInst;
+          schedule[0].resource = leastUsedResource;
+
+          return 1; // We found 1 VM to move.
         }
       }
     }
   }
 
-  if (schedulableCount) {
-    logsc(EUCAERROR, "Unschedulable??\n");
-    // Do nothing
-    return -1;
-  }
-
+  // If we got this far, we didn't find something to schedule.  Better luck next time!
   return 0;
 }
 
