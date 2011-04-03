@@ -114,7 +114,7 @@ void schedule(ncMetadata * ccMeta) {
   // Call our scheduler...
   int count = scheduler(&resourceCacheLocal, &instanceCacheLocal, &schedule[0]);
   if (count == 0) {
-    logsc(EUCAINFO, "No nodes scheduled\n");
+    logsc(EUCADEBUG, "No nodes scheduled\n");
     return;
   }
 
@@ -177,7 +177,8 @@ int balanceSchedule(ccResourceCache * resCache, ccInstanceCache * instCache, sch
   ccResource *mostUsedResource = NULL, *leastUsedResource = NULL;
   for (i = 0; i < resCount; ++i) {
     ccResource * curResource = &resCache->resources[i];
-    logsc(EUCAINFO, "Looking at %s\n", curResource->hostname);
+    logsc(EUCADEBUG, "Looking at %s (Util %f)\n",
+        curResource->hostname, resourceCoreUtil(curResource));
 
     if (!mostUsedResource || (balanceCompare(curResource, mostUsedResource) > 0.0)) {
       mostUsedResource = curResource;
@@ -188,8 +189,8 @@ int balanceSchedule(ccResourceCache * resCache, ccInstanceCache * instCache, sch
 
   }
 
-  if (mostUsedResource) logsc(EUCAINFO, "Most used resource is %s\n", mostUsedResource->hostname);
-  if (leastUsedResource) logsc(EUCAINFO, "Least used resource is %s\n", leastUsedResource->hostname);
+  if (mostUsedResource) logsc(EUCADEBUG, "Most used resource is %s\n", mostUsedResource->hostname);
+  if (leastUsedResource) logsc(EUCADEBUG, "Least used resource is %s\n", leastUsedResource->hostname);
 
   if (mostUsedResource && leastUsedResource && (mostUsedResource != leastUsedResource)) {
     // TODO KOALA: Try to find 'largest' such instance?
