@@ -2293,7 +2293,7 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
     return 1;
   }
 
-  if (!strcmp(migrationInst->state, "Teardown") {
+  if (!strcmp(migrationInst->state, "Teardown")) {
     logprintfl(EUCAERROR, "MigrateInstance(): Instance %s is currently in teardown state, cannot migrate!\n", instanceId);
     sem_mypost(MIGRATE);
     return 1;
