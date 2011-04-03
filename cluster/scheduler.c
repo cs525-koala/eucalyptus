@@ -78,6 +78,8 @@ void *schedulerThread(void * unused) {
     unlock_exit(1);
   }
 
+  srand((int)&ccMeta);
+
   readSchedConfig();
 
   while(1) {
@@ -230,6 +232,30 @@ int balanceScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, sc
   return 0;
 }
 
+int randZeroAnd(int n) {
+  double nn = n;
+  return (int)(nn * (rand() / (RAND_MAX + 1.0)));
+}
+
+int* randomizedOrder(int count) {
+  int * array = malloc(count*sizeof(int));
+  int i;
+
+  for (i = 0; i < count; ++i) {
+    array[i] = i;
+  }
+
+  for (i = count -1; i >= 0; --i) {
+    int swap = randZeroAnd(i); 
+
+    int tmp = array[swap];
+    array[swap] = array[i];
+    array[i] = tmp;
+  }
+
+  return array;
+}
+
 // Returns count of VMs the scheduler wants to move.
 // This schedule is just to have fun while we're writing the paper O:)
 int funScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, scheduledVM* schedule) {
@@ -237,6 +263,11 @@ int funScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, schedu
   const int resCount = resCache->numResources;
 
   int i, j;
+
+
+  int * instOrder = randomizedOrder(instCache->numInsts);
+  int * resOrder = randomizedOrder(resCache->numInsts);
+  // Find random resource pairings...
 
   // Find most used resource...
   ccResource *mostUsedResource = NULL;
@@ -273,7 +304,7 @@ int funScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, schedu
           double newUtil = (double)newCoresUsed / (double)targetResource->maxCores;
 
           // Can this resource take the VM in question?
-          if (newUtil < 1.0) {
+          if (newUtil <= 1.0) {
             // Okay, we have a winner!
             schedule[0].instance = curInst;
             schedule[0].resource = targetResource;
