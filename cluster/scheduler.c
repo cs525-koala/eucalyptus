@@ -283,7 +283,7 @@ int funScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, schedu
           double newUtil = (double)newCoresUsed / (double)targetResource->maxCores;
 
           // Can this resource take the VM in question?
-          if (newUtil < 1.0) {
+          if (newUtil <= 1.0) {
             // Okay, we have a winner!
             schedule[0].instance = curInst;
             schedule[0].resource = targetResource;
