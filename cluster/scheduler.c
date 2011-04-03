@@ -65,7 +65,7 @@ static void setSignalHandler(void) {
 // Read in the scheduler_config from disk.
 // For now, just set some default values.
 static void readSchedConfig(void) {
-  schedConfig.schedFreq = 60; //every 60 seconds
+  schedConfig.schedFreq = 30; //every 30 seconds
 }
 
 void *schedulerThread(void * unused) {
