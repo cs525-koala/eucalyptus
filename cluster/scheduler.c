@@ -181,11 +181,13 @@ int balanceScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, sc
   // Find the 'least' used host, and the 'most' used host, and move a VM from the most to the least.
 
   int i;
+  int * instOrder = randomizedOrder(instCache->numInsts);
+  int * resOrder = randomizedOrder(resCache->numInsts);
 
   // Find most and least used resources...
   ccResource *mostUsedResource = NULL, *leastUsedResource = NULL;
   for (i = 0; i < resCount; ++i) {
-    ccResource * curResource = &resCache->resources[i];
+    ccResource * curResource = &resCache->resources[resOrder[i]];
     logsc(EUCADEBUG, "Looking at %s (Util %f)\n",
         curResource->hostname, resourceCoreUtil(curResource));
 
@@ -206,7 +208,7 @@ int balanceScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, sc
     // For now, just find any instance that is 'worth' moving
 
     for(i = 0; i < instCache->numInsts; ++i) {
-      ccInstance * curInst = &instCache->instances[i];
+      ccInstance * curInst = &instCache->instances[instOrder[i]];
       ccResource * curResource = &resCache->resources[curInst->ncHostIdx];
 
       if (!isSchedulable(curInst)) continue;
@@ -230,11 +232,17 @@ int balanceScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, sc
           schedule[0].instance = curInst;
           schedule[0].resource = leastUsedResource;
 
+          free(instOrder);
+          free(resOrder);
+
           return 1; // We found 1 VM to move.
         }
       }
     }
   }
+
+  free(instOrder);
+  free(resOrder);
 
   // If we got this far, we didn't find something to schedule.  Better luck next time!
   return 0;
@@ -275,40 +283,31 @@ int funScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, schedu
 
   int * instOrder = randomizedOrder(instCache->numInsts);
   int * resOrder = randomizedOrder(resCache->numInsts);
+  int * resOrder2 = randomizedOrder(resCache->numInsts);
   // Find random resource pairings...
 
-  // Find most used resource...
-  ccResource *mostUsedResource = NULL;
+  // Find a resource to migrate from...
+  ccResource *sourceResource = NULL;
   for (i = 0; i < resCount; ++i) {
-    ccResource * curResource = &resCache->resources[i];
-    logsc(EUCADEBUG, "Looking at %s (Util %f)\n",
-        curResource->hostname, resourceCoreUtil(curResource));
+    ccResource * curResource = &resCache->resources[resOrder[i]];
 
-    if (!mostUsedResource || (balanceCompare(curResource, mostUsedResource) > 0.0)) {
-      mostUsedResource = curResource;
-    }
-
-  }
-
-  if (mostUsedResource) logsc(EUCADEBUG, "Most used resource is %s\n", mostUsedResource->hostname);
-
-  if (mostUsedResource) {
-
+    // Go through all instances, considering those that are on sourceResource
+    // (no good way to just get resource->instance listing)
     for (i = 0; i < instCache->numInsts; ++i) {
-      ccInstance * curInst = &instCache->instances[i];
+      ccInstance * curInst = &instCache->instances[instOrder[i]];
       ccResource * curResource = &resCache->resources[curInst->ncHostIdx];
 
       if (!isSchedulable(curInst)) continue;
 
-      // If this is an instance running on 'mostUsedResource'
-      if (curResource == mostUsedResource) {
+      // If this is an instance running on 'sourceResource'
+      if (curResource == sourceResource) {
 
         // Find some resource that can take it...
         for (j = 0; j < resCache->numResources; ++j) {
           // Skip over the one we're hoping to migrate *from*
           if(j == curInst->ncHostIdx) continue;
 
-          ccResource * targetResource = &resCache->resources[j];
+          ccResource * targetResource = &resCache->resources[resOrder2[j]];
 
           int newCoresUsed = targetResource->maxCores - targetResource->availCores + curInst->ccvm.cores;
           double newUtil = (double)newCoresUsed / (double)targetResource->maxCores;
@@ -319,12 +318,20 @@ int funScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, schedu
             schedule[0].instance = curInst;
             schedule[0].resource = targetResource;
 
+            free(instOrder);
+            free(resOrder);
+            free(resOrder2);
+
             return 1; // We found 1 VM to move.
           }
         }
       }
     }
   }
+
+  free(instOrder);
+  free(resOrder);
+  free(resOrder2);
 
   // If we got this far, we didn't find something to schedule.  Better luck next time!
   return 0;
@@ -343,10 +350,14 @@ int groupingScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, s
 
   int i, j;
 
+  int * instOrder = randomizedOrder(instCache->numInsts);
+  int * resOrder = randomizedOrder(resCache->numInsts);
+  int * resOrder2 = randomizedOrder(resCache->numInsts);
+
   // Find least used resource...
   ccResource *leastUsedResource = NULL;
   for (i = 0; i < resCount; ++i) {
-    ccResource * curResource = &resCache->resources[i];
+    ccResource * curResource = &resCache->resources[resOrder[i]];
     logsc(EUCADEBUG, "Looking at %s (Util %f)\n",
         curResource->hostname, resourceCoreUtil(curResource));
 
@@ -368,7 +379,7 @@ int groupingScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, s
 
   // Find instances for this resource...
   for(i = 0; i < instCache->numInsts; ++i) {
-    ccInstance * curInst = &instCache->instances[i];
+    ccInstance * curInst = &instCache->instances[instOrder[i]];
     ccResource * curResource = &resCache->resources[curInst->ncHostIdx];
 
     if (!isSchedulable(curInst)) continue;
@@ -382,7 +393,7 @@ int groupingScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, s
         // Skip over the one we're hoping to migrate *from*
         if(j == curInst->ncHostIdx) continue;
 
-        ccResource * candidateTargetResource = &resCache->resources[j];
+        ccResource * candidateTargetResource = &resCache->resources[resOrder2[j]];
 
         // Can this VM fit on this resource *anyway*? If not, skip.
         if (candidateTargetResource->availCores < curInst->ccvm.cores) continue;
@@ -405,11 +416,19 @@ int groupingScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, s
           schedule[0].instance = curInst;
           schedule[0].resource = mostUsedResource;
 
+          free(instOrder);
+          free(resOrder);
+          free(resOrder2);
+
           return 1;
         }
       }
     }
   }
+
+  free(instOrder);
+  free(resOrder);
+  free(resOrder2);
 
   // If we got this far, we didn't find something to schedule.  Better luck next time!
   return 0;
