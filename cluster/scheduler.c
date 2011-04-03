@@ -197,7 +197,7 @@ int balanceSchedule(ccResourceCache * resCache, ccInstanceCache * instCache, sch
 
     for(i = 0; i < instCache->numInsts; ++i) {
       ccInstance * curInst = &instCache->instances[i];
-      ccResource * curResource = &resCache->resources[i];
+      ccResource * curResource = &resCache->resources[curInst->ncHostIdx];
 
       // If this is an instance running on 'mostUsedResource'
       if (curResource == mostUsedResource) {
