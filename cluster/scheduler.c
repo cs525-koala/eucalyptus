@@ -43,7 +43,7 @@ typedef int (*scAlgo)(ccResourceCache *, ccInstanceCache *, scheduledVM *);
 int balanceScheduler(ccResourceCache *, ccInstanceCache *, scheduledVM*);
 int groupingScheduler(ccResourceCache *, ccInstanceCache *, scheduledVM*);
 int funScheduler(ccResourceCache *, ccInstanceCache *, scheduledVM*);
-scAlgo scheduler = groupingScheduler;
+scAlgo scheduler = funScheduler;
 
 
 static schedConfig_t schedConfig;
