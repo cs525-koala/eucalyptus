@@ -2659,7 +2659,7 @@ int init_pthreads() {
       sigprocmask(SIG_SETMASK, &newsigact.sa_mask, NULL);
       sigaction(SIGTERM, &newsigact, NULL);
 
-      scheduler_thread(NULL);
+      schedulerThread(NULL);
       exit(0);
     } else {
       config->threads[SCHEDULER] = pid;
