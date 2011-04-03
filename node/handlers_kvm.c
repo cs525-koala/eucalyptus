@@ -281,6 +281,8 @@ doReceiveMigrationInstance (	struct nc_state_t *nc,
     }
 
     instance->launchTime = time (NULL);
+
+    // TODO KOALA: What should we do here?  Revisit this!
     /*
     instance->params.mem = params->mem;
     instance->params.cores = params->cores;
