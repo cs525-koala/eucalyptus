@@ -41,6 +41,7 @@ typedef struct {
 typedef int (*scAlgo)(ccResourceCache *, ccInstanceCache *, scheduledVM *);
 
 int balanceScheduler(ccResourceCache *, ccInstanceCache *, scheduledVM*);
+int groupingScheduler(ccResourceCache *, ccInstanceCache *, scheduledVM*);
 int funScheduler(ccResourceCache *, ccInstanceCache *, scheduledVM*);
 scAlgo scheduler = funScheduler;
 
@@ -155,6 +156,11 @@ void schedule(ncMetadata * ccMeta) {
   }
 }
 
+char isSchedulable(ccInstance *inst) {
+  // An instance is only schedulable if it's running
+  return inst && !strcmp(inst->state, "Extant");
+}
+
 // Return comparison function of the two.
 // For now, returns their core utilization
 // Result is >=0 is 'resource1' is 'more used' than 'resource2'
@@ -202,6 +208,8 @@ int balanceScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, sc
     for(i = 0; i < instCache->numInsts; ++i) {
       ccInstance * curInst = &instCache->instances[i];
       ccResource * curResource = &resCache->resources[curInst->ncHostIdx];
+
+      if (!isSchedulable(curInst)) continue;
 
       // If this is an instance running on 'mostUsedResource'
       if (curResource == mostUsedResource) {
@@ -290,6 +298,8 @@ int funScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, schedu
       ccInstance * curInst = &instCache->instances[i];
       ccResource * curResource = &resCache->resources[curInst->ncHostIdx];
 
+      if (!isSchedulable(curInst)) continue;
+
       // If this is an instance running on 'mostUsedResource'
       if (curResource == mostUsedResource) {
 
@@ -311,6 +321,91 @@ int funScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, schedu
 
             return 1; // We found 1 VM to move.
           }
+        }
+      }
+    }
+  }
+
+  // If we got this far, we didn't find something to schedule.  Better luck next time!
+  return 0;
+}
+
+// Attempts to put move machines from less used ones to more used ones
+int groupingScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, scheduledVM* schedule) {
+  // TODO KOALA: Algorithm stability??
+
+  const int resCount = resCache->numResources;
+
+  // Simple algorithm:
+  // Find the 'least' used host, and try to move any of its instances to the most utilized resouce that can hold it.
+  // Not perfect, but good enough for now--generally just tries to put instances together.
+  // Should try for each resource, STARTING with the least used, but moving up from there.  For now just gives up.
+
+  int i, j;
+
+  // Find least used resource...
+  ccResource *leastUsedResource = NULL;
+  for (i = 0; i < resCount; ++i) {
+    ccResource * curResource = &resCache->resources[i];
+    logsc(EUCADEBUG, "Looking at %s (Util %f)\n",
+        curResource->hostname, resourceCoreUtil(curResource));
+
+    // We only are interested in resources that have instances to be moved...
+    if (curResource->availCores == curResource->maxCores) continue;
+
+    if (!leastUsedResource || (balanceCompare(curResource, leastUsedResource) < 0.0)) {
+      leastUsedResource = curResource;
+    }
+
+  }
+
+  if (!leastUsedResource) {
+    logsc(EUCADEBUG, "Failed to find least used resource!\n");
+    return 0;
+  }
+
+  logsc(EUCADEBUG, "Least used resource is %s\n", leastUsedResource->hostname);
+
+  // Find instances for this resource...
+  for(i = 0; i < instCache->numInsts; ++i) {
+    ccInstance * curInst = &instCache->instances[i];
+    ccResource * curResource = &resCache->resources[curInst->ncHostIdx];
+
+    if (!isSchedulable(curInst)) continue;
+
+    // If this is an instance running on 'leastUsedResource'
+    if (curResource == leastUsedResource) {
+
+      // Find the /most/ used resource that this instance fits on
+      ccResource * mostUsedResource = NULL;
+      for (j = 0; j < resCache->numResources; ++j) {
+        // Skip over the one we're hoping to migrate *from*
+        if(j == curInst->ncHostIdx) continue;
+
+        ccResource * candidateTargetResource = &resCache->resources[j];
+
+        // Can this VM fit on this resource *anyway*? If not, skip.
+        if (candidateTargetResource->availCores < curInst->ccvm.cores) continue;
+
+        // Okay, well see if it's the most used such resource...
+        if (!mostUsedResource || (balanceCompare(curResource, mostUsedResource) > 0.0)) {
+          mostUsedResource = candidateTargetResource;
+        }
+      }
+
+      if (mostUsedResource) {
+        double util1 = resourceCoreUtil(mostUsedResource);
+        double util2 = resourceCoreUtil(leastUsedResource);
+
+        int newCoresUsed = mostUsedResource->maxCores - mostUsedResource->availCores + curInst->ccvm.cores;
+        double newUtil = (double)newCoresUsed / (double)mostUsedResource->maxCores;
+
+        if (util2 < newUtil) {
+          // Found one!
+          schedule[0].instance = curInst;
+          schedule[0].resource = mostUsedResource;
+
+          return 1;
         }
       }
     }

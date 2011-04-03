@@ -2293,6 +2293,13 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
     return 1;
   }
 
+  if (strcmp(migrationInst->state, "Extant")) {
+    logprintfl(EUCAERROR, "MigrateInstance(): Instance %s is in %s state, cannot migrate!\n",
+        instanceId, migrationInst->state);
+    sem_mypost(MIGRATE);
+    return 1;
+  }
+
   fromIdx = migrationInst->ncHostIdx;
 
   // Verify the instance is on the 'from' node (according to our cache)
