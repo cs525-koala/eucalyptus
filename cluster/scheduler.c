@@ -122,8 +122,8 @@ void schedule(ncMetadata * ccMeta) {
     return;
   }
 
-  // And migrate all instances that aren't already on the hosts indicated by
-  // the new schedule.
+  // Scheduler algorithm returned us set of VM's it wants us to move.
+  // ...Attempt to do so!
 
   int i;
   for (i = 0; i < count; ++i) {
@@ -134,7 +134,7 @@ void schedule(ncMetadata * ccMeta) {
     if (sourceResource == targetResource) {
       logsc(EUCAERROR, "Scheduler indicated we should move %s to resource %s that it's already on??",
           VM->instanceId, targetResource->hostname);
-      return;
+      continue;
     }
 
     logsc(EUCAINFO, "Attempting to migrate %s from %s(%s) to %s(%s)\n",
@@ -152,6 +152,9 @@ void schedule(ncMetadata * ccMeta) {
           VM->instanceId,
           sourceResource->hostname,
           targetResource->hostname);
+    }
+    else {
+      logsc(EUCAINFO, "Migration of %s appears successful!\n", VM->instanceId);
     }
   }
 }
@@ -287,9 +290,8 @@ int funScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, schedu
   // Find random resource pairings...
 
   // Find a resource to migrate from...
-  ccResource *sourceResource = NULL;
   for (i = 0; i < resCount; ++i) {
-    ccResource * sourceResource = &resCache->resources[resOrder[i]];
+    ccResource *sourceResource = &resCache->resources[resOrder[i]];
     logsc(EUCADEBUG, "Looking at %s\n", sourceResource->hostname);
 
     // Go through all instances, considering those that are on sourceResource
@@ -309,6 +311,8 @@ int funScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, schedu
         for (k = 0; k < resCache->numResources; ++k) {
 
           ccResource * targetResource = &resCache->resources[resOrder2[k]];
+          logsc(EUCADEBUG, "Considering moving %s from %s to %s...\n",
+              curInst->instanceId, sourceResource->hostname, targetResource->hostname);
 
           // Skip over the one we're hoping to migrate *from*
           if (targetResource == sourceResource) continue;
@@ -394,10 +398,11 @@ int groupingScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, s
       // Find the /most/ used resource that this instance fits on
       ccResource * mostUsedResource = NULL;
       for (j = 0; j < resCache->numResources; ++j) {
-        // Skip over the one we're hoping to migrate *from*
-        if(j == curInst->ncHostIdx) continue;
 
         ccResource * candidateTargetResource = &resCache->resources[resOrder2[j]];
+
+        // Skip over the one we're hoping to migrate *from*
+        if (candidateTargetResource == curResource) continue;
 
         // Can this VM fit on this resource *anyway*? If not, skip.
         if (candidateTargetResource->availCores < curInst->ccvm.cores) continue;
