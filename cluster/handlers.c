@@ -2293,7 +2293,7 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
     return 1;
   }
 
-  if (strcmp(migrationInst->state, "Running")) {
+  if (strcmp(migrationInst->state, "Extant")) {
     logprintfl(EUCAERROR, "MigrateInstance(): Instance %s is in %s state, cannot migrate!\n",
         instanceId, migrationInst->state);
     sem_mypost(MIGRATE);

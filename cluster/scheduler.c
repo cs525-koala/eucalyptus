@@ -156,7 +156,7 @@ void schedule(ncMetadata * ccMeta) {
 
 char isSchedulable(ccInstance *inst) {
   // An instance is only schedulable if it's running
-  return inst && !strcmp(inst->state, "Running");
+  return inst && !strcmp(inst->state, "Extant");
 }
 
 // Return comparison function of the two.
@@ -318,6 +318,9 @@ int groupingScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, s
     ccResource * curResource = &resCache->resources[i];
     logsc(EUCADEBUG, "Looking at %s (Util %f)\n",
         curResource->hostname, resourceCoreUtil(curResource));
+
+    // We only are interested in resources that have instances to be moved...
+    if (curResource->availCores == curResource->maxCores) continue;
 
     if (!leastUsedResource || (balanceCompare(curResource, leastUsedResource) < 0.0)) {
       leastUsedResource = curResource;
