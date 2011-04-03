@@ -26,7 +26,7 @@
 #include <misc.h>
 #include <handlers.h>
 
-static void schedule(void);
+static void schedule(ncMetadata * ccMeta);
 
 // "Knobs" go here.
 typedef struct {
@@ -83,7 +83,7 @@ void *schedulerThread(void * unused) {
 
     logsc(EUCADEBUG, "running\n");
 
-    schedule();
+    schedule(&ccMeta);
 
     shawn();
 
@@ -97,7 +97,7 @@ void *schedulerThread(void * unused) {
   return NULL;
 }
 
-void schedule() {
+void schedule(ncMetadata * ccMeta) {
   static ccResourceCache resourceCacheLocal;
   static ccInstanceCache instanceCacheLocal;
 
@@ -124,24 +124,31 @@ void schedule() {
   int i;
   for (i = 0; i < count; ++i) {
     ccInstance * VM = schedule[i].instance;
-    ccResource * currentResource = schedule[i].resource;
+    ccResource * targetResource = schedule[i].resource;
 
-    ccResource * targetResource = &resourceCacheLocal.resources[VM->ncHostIdx];
-    if (currentResource == targetResource) {
+    ccResource * sourceResource = &resourceCacheLocal.resources[VM->ncHostIdx];
+    if (sourceResource == targetResource) {
       logsc(EUCAERROR, "Scheduler indicated we should move %s to resource %s that it's already on??",
-          VM->instanceId, currentResource->hostname);
+          VM->instanceId, targetResource->hostname);
       return;
     }
 
-    // TODO KOALA: Actually migrate things!
-
-    // For now, just log the migration
     logsc(EUCAINFO, "Attempting to migrate %s from %s(%s) to %s(%s)\n",
         VM->instanceId,
-        currentResource->hostname,
-        currentResource->ip,
+        sourceResource->hostname,
+        sourceResource->ip,
         targetResource->hostname,
         targetResource->ip);
+
+    // Migrate the VM!
+    int result = doMigrateInstance(ccMeta, VM->instanceId, sourceResource->hostname, targetResource->hostname);
+
+    if (result) {
+      logsc(EUCAERROR, "Error migrating %s from %s to %s!\n",
+          VM->instanceId,
+          sourceResource->hostname,
+          targetResource->hostname);
+    }
   }
 }
 
