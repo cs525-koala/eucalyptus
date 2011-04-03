@@ -79,7 +79,7 @@ void *schedulerThread(void * unused) {
     unlock_exit(1);
   }
 
-  srand((int)&ccMeta);
+  srand((uintptr_t)&ccMeta + time(NULL));
 
   readSchedConfig();
 
@@ -171,6 +171,30 @@ double balanceCompare(ccResource * resource1, ccResource * resource2) {
   return util1 - util2;
 }
 
+int randZeroAnd(int n) {
+  double nn = n;
+  return (int)(nn * (rand() / (RAND_MAX + 1.0)));
+}
+
+int* randomizedOrder(int count) {
+  int * array = malloc(count*sizeof(int));
+  int i;
+
+  for (i = 0; i < count; ++i) {
+    array[i] = i;
+  }
+
+  for (i = count -1; i >= 0; --i) {
+    int swap = randZeroAnd(i);
+
+    int tmp = array[swap];
+    array[swap] = array[i];
+    array[i] = tmp;
+  }
+
+  return array;
+}
+
 // Returns count of VMs the scheduler wants to move.
 int balanceScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, scheduledVM* schedule) {
   // TODO KOALA: Algorithm stability??
@@ -182,7 +206,7 @@ int balanceScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, sc
 
   int i;
   int * instOrder = randomizedOrder(instCache->numInsts);
-  int * resOrder = randomizedOrder(resCache->numInsts);
+  int * resOrder = randomizedOrder(resCache->numResources);
 
   // Find most and least used resources...
   ccResource *mostUsedResource = NULL, *leastUsedResource = NULL;
@@ -248,30 +272,6 @@ int balanceScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, sc
   return 0;
 }
 
-int randZeroAnd(int n) {
-  double nn = n;
-  return (int)(nn * (rand() / (RAND_MAX + 1.0)));
-}
-
-int* randomizedOrder(int count) {
-  int * array = malloc(count*sizeof(int));
-  int i;
-
-  for (i = 0; i < count; ++i) {
-    array[i] = i;
-  }
-
-  for (i = count -1; i >= 0; --i) {
-    int swap = randZeroAnd(i); 
-
-    int tmp = array[swap];
-    array[swap] = array[i];
-    array[i] = tmp;
-  }
-
-  return array;
-}
-
 // Returns count of VMs the scheduler wants to move.
 // This schedule is just to have fun while we're writing the paper O:)
 int funScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, scheduledVM* schedule) {
@@ -282,8 +282,8 @@ int funScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, schedu
 
 
   int * instOrder = randomizedOrder(instCache->numInsts);
-  int * resOrder = randomizedOrder(resCache->numInsts);
-  int * resOrder2 = randomizedOrder(resCache->numInsts);
+  int * resOrder = randomizedOrder(resCache->numResources);
+  int * resOrder2 = randomizedOrder(resCache->numResources);
   // Find random resource pairings...
 
   // Find a resource to migrate from...
@@ -351,8 +351,8 @@ int groupingScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, s
   int i, j;
 
   int * instOrder = randomizedOrder(instCache->numInsts);
-  int * resOrder = randomizedOrder(resCache->numInsts);
-  int * resOrder2 = randomizedOrder(resCache->numInsts);
+  int * resOrder = randomizedOrder(resCache->numResources);
+  int * resOrder2 = randomizedOrder(resCache->numResources);
 
   // Find least used resource...
   ccResource *leastUsedResource = NULL;
