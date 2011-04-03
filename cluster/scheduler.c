@@ -43,7 +43,7 @@ typedef int (*scAlgo)(ccResourceCache *, ccInstanceCache *, scheduledVM *);
 int balanceScheduler(ccResourceCache *, ccInstanceCache *, scheduledVM*);
 int groupingScheduler(ccResourceCache *, ccInstanceCache *, scheduledVM*);
 int funScheduler(ccResourceCache *, ccInstanceCache *, scheduledVM*);
-scAlgo scheduler = funScheduler;
+scAlgo scheduler = groupingScheduler;
 
 
 static schedConfig_t schedConfig;
@@ -372,7 +372,7 @@ int groupingScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, s
         if (util2 < newUtil) {
           // Found one!
           schedule[0].instance = curInst;
-          schedule[0].resource = leastUsedResource;
+          schedule[0].resource = mostUsedResource;
 
           return 1;
         }
