@@ -118,7 +118,7 @@ void schedule(ncMetadata * ccMeta) {
   // Call our scheduler...
   int count = scheduler(&resourceCacheLocal, &instanceCacheLocal, &schedule[0]);
   if (count == 0) {
-    logsc(EUCADEBUG, "No nodes scheduled\n");
+    logsc(EUCADEBUG, "No VMs/instances scheduled\n");
     return;
   }
 
