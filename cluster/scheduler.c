@@ -215,8 +215,8 @@ int balanceScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, sc
   ccResource *mostUsedResource = NULL, *leastUsedResource = NULL;
   for (i = 0; i < resCount; ++i) {
     ccResource * curResource = &resCache->resources[resOrder[i]];
-    logsc(EUCADEBUG, "Looking at %s (Util %f)\n",
-        curResource->hostname, resourceCoreUtil(curResource));
+    //logsc(EUCADEBUG, "Looking at %s (Util %f)\n",
+    //    curResource->hostname, resourceCoreUtil(curResource));
 
     if (!mostUsedResource || (balanceCompare(curResource, mostUsedResource) > 0.0)) {
       mostUsedResource = curResource;
@@ -292,7 +292,7 @@ int funScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, schedu
   // Find a resource to migrate from...
   for (i = 0; i < resCount; ++i) {
     ccResource *sourceResource = &resCache->resources[resOrder[i]];
-    logsc(EUCADEBUG, "Looking at %s\n", sourceResource->hostname);
+    //logsc(EUCADEBUG, "Looking at %s\n", sourceResource->hostname);
 
     // Go through all instances, considering those that are on sourceResource
     // (no good way to just get resource->instance listing)
@@ -300,7 +300,7 @@ int funScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, schedu
       ccInstance * curInst = &instCache->instances[instOrder[j]];
       ccResource * curResource = &resCache->resources[curInst->ncHostIdx];
 
-      logsc(EUCADEBUG, "Looking at %s (on %s)\n", curInst->instanceId, curResource->hostname);
+      //logsc(EUCADEBUG, "Looking at %s (on %s)\n", curInst->instanceId, curResource->hostname);
 
       if (!isSchedulable(curInst)) continue;
 
@@ -366,8 +366,8 @@ int groupingScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, s
   ccResource *leastUsedResource = NULL;
   for (i = 0; i < resCount; ++i) {
     ccResource * curResource = &resCache->resources[resOrder[i]];
-    logsc(EUCADEBUG, "Looking at %s (Util %f)\n",
-        curResource->hostname, resourceCoreUtil(curResource));
+    //logsc(EUCADEBUG, "Looking at %s (Util %f)\n",
+    //    curResource->hostname, resourceCoreUtil(curResource));
 
     // We only are interested in resources that have instances to be moved...
     if (curResource->availCores == curResource->maxCores) continue;
