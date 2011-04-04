@@ -580,6 +580,7 @@ doMigrateInstance(	struct nc_state_t *nc,
 
   logprintfl(EUCAINFO, "MigrateInstance(): Attempting to migrate instance %s...\n", instanceId);
   unsigned long flags = VIR_MIGRATE_LIVE;
+  sem_p(hyp_sem);
   virDomainPtr newdom = virDomainMigrate(
       dom,          /* Domain to migrate */
       remote_conn,  /* Remote hypervisor to migrate to */
@@ -587,6 +588,9 @@ doMigrateInstance(	struct nc_state_t *nc,
       NULL,         /* Name to give at other end; NULL means leave it alone */
       migrationURI, /* URI from local node that indicates how to send to remote host */
       0);           /* Bandwidth -- 0 means 'pick a suitable default' */
+
+  virDomainFree(dom);
+  sem_v(hyp_sem);
 
   if (!newdom) {
     logprintfl(EUCAFATAL, "Error: Migration failed on instance %s\n", instanceId);
@@ -596,6 +600,10 @@ doMigrateInstance(	struct nc_state_t *nc,
 
     return ERROR_FATAL;
   }
+
+  sem_p(hyp_sem);
+  virDomainFree(newdom);
+  sem_v(hyp_sem);
 
   logprintfl(EUCAINFO, "MigrateInstance(): Migration (seems to be) successful!\n");
 

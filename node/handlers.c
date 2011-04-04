@@ -224,6 +224,7 @@ int destroy_instance(ncInstance *instance) {
     if (dom) {
       sem_p(hyp_sem);
       virDomainDestroy(dom);
+      virDomainFree(dom);
       sem_v(hyp_sem);
     }
   }
