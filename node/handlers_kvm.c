@@ -608,8 +608,8 @@ doMigrateInstance(	struct nc_state_t *nc,
   }
 
   sem_p(hyp_sem);
-  virConnectClose(remote_conn);
   virDomainFree(newdom);
+  virConnectClose(remote_conn);
   sem_v(hyp_sem);
 
   logprintfl(EUCAINFO, "MigrateInstance(): Migration (seems to be) successful!\n");
