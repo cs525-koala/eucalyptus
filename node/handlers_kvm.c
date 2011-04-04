@@ -568,6 +568,9 @@ doMigrateInstance(	struct nc_state_t *nc,
   sem_v(hyp_sem);
   if (!dom) {
     logprintfl(EUCAFATAL, "Error: Failed to get domain for instance %s\n", instanceId);
+    sem_p(hyp_sem);
+    virConnectClose(remote_conn);
+    sem_v(hyp_sem);
     return ERROR_FATAL;
   }
 
@@ -598,10 +601,14 @@ doMigrateInstance(	struct nc_state_t *nc,
     logprintfl(EUCAINFO, "MigrateInstance(): Setting instance %s to NO_MIGRATION state\n", instanceId);
     instance->migrationState = NO_MIGRATION;
 
+    sem_p(hyp_sem);
+    virConnectClose(remote_conn);
+    sem_v(hyp_sem);
     return ERROR_FATAL;
   }
 
   sem_p(hyp_sem);
+  virConnectClose(remote_conn);
   virDomainFree(newdom);
   sem_v(hyp_sem);
 
