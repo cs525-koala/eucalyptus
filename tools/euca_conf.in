@@ -352,7 +352,7 @@ sync_keys() {
 	    fi
 	    echo
 	    echo "Trying scp to sync keys with \"${1}\" (user \"${EUCA_USER}\")..."
-	    if sudo -u ${EUCA_USER} $SCP ${FILES} ${EUCA_USER}@${REMOTE}:${DESTDIR} > /dev/null ; then
+	    if su ${EUCA_USER} -c "$SCP ${FILES} ${EUCA_USER}@${REMOTE}:${DESTDIR}" > /dev/null ; then
 		echo "done."
 		return 0
 	    else
@@ -929,7 +929,7 @@ if [ -n "$CHECK" ]; then
 			exit 1
 		fi
 		# need to check if euca_rootwrap can run as EUCA_USER
-                TEST_EUID="`sudo -u $EUCA_USER $ROOTWRAP $ID -u`"
+    TEST_EUID="`su $EUCA_USER -c "$ROOTWRAP $ID -u"`"
 		if [ "$?" != "0" -o "$TEST_EUID" != "0" ]; then
 			echo "Problem running $ROOTWRAP! Did you run euca_conf -setup?"
 			exit 1
