@@ -896,10 +896,10 @@ retry:
 	sem_p (disk_sem);
         /* cache the partition or disk, if possible */
         if ( e==OK && should_cache ) {
-            if ( (e=vrun ("cp -a %s %s", file_path, cached_path)) != 0) {
+            if ( (e=vrun ("cp -dR %s %s", file_path, cached_path)) != 0) {
                 logprintfl (EUCAERROR, "failed to copy file %s into cache at %s\n", file_path, cached_path);
             }
-            if ( e==OK && (e=vrun ("cp -a %s %s", tmp_digest_path, digest_path)) != 0) {
+            if ( e==OK && (e=vrun ("cp -dR %s %s", tmp_digest_path, digest_path)) != 0) {
                 logprintfl (EUCAERROR, "failed to copy digest file %s into cache at %s\n", tmp_digest_path, digest_path);
             }
         }
@@ -978,7 +978,7 @@ retry:
         } else { /* all good - copy it, finally */
             ensure_subdirectory_exists (file_path); /* creates missing directories */            
 	    sem_p (disk_sem);
-            if ( (e=vrun ("cp -a %s %s", cached_path, file_path)) != 0) {
+            if ( (e=vrun ("cp -dR %s %s", cached_path, file_path)) != 0) {
   	        logprintfl (EUCAERROR, "failed to copy file %s from cache at %s\n", file_path, cached_path);
 		sem_v (disk_sem);
                 return 0L;
