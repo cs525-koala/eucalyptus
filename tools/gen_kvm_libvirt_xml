@@ -132,7 +132,7 @@ EOF
     print <<EOF;
         <disk type='file'>
             <source file='BASEPATH/disk'/>
-            <target dev='sda'/>
+            <target dev='sda' bus='ide'/>
         </disk>
 EOF
 }
