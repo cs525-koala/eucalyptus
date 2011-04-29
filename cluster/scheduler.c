@@ -17,6 +17,7 @@
 
 #include <scheduler.h>
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
 
@@ -28,11 +29,6 @@
 
 static void schedule(ncMetadata * ccMeta);
 
-// "Knobs" go here.
-typedef struct {
-  int schedFreq;
-} schedConfig_t;
-
 typedef struct {
   ccInstance * instance;
   ccResource * resource;
@@ -40,11 +36,28 @@ typedef struct {
 
 typedef int (*scAlgo)(ccResourceCache *, ccInstanceCache *, scheduledVM *);
 
+// "Knobs" go here.
+typedef struct {
+  int schedFreq;
+  scAlgo scheduler;
+} schedConfig_t;
+
 int balanceScheduler(ccResourceCache *, ccInstanceCache *, scheduledVM*);
 int groupingScheduler(ccResourceCache *, ccInstanceCache *, scheduledVM*);
 int funScheduler(ccResourceCache *, ccInstanceCache *, scheduledVM*);
-scAlgo scheduler = funScheduler;
 
+// Default, does nothing.
+int noScheduler(ccResourceCache * unused1, ccInstanceCache * unused2, scheduledVM* unused3) {
+  return 0;
+}
+
+scAlgo schedTable[] = {
+  noScheduler,
+  balanceScheduler,
+  groupingScheduler,
+  funScheduler
+};
+static int schedTable_size = sizeof(schedTable)/sizeof(schedTable[0]);
 
 static schedConfig_t schedConfig;
 
@@ -62,11 +75,50 @@ static void setSignalHandler(void) {
   sigaction(SIGTERM, &newsigact, NULL);
 }
 
-// Read in the scheduler_config from disk.
-// For now, just set some default values.
-static void readSchedConfig(void) {
-  schedConfig.schedFreq = 30; //every 30 seconds
+// Read the scheduler configuration
+static int readSchedConfigFile(void) {
+
+  // Config file:
+  // First integer: scheduling frequency
+  // Second integer: scheduling policy index
+  FILE * f = fopen("/tmp/sched.config", "r");
+
+  if (!f) return 0;
+
+  int freq, policy;
+  int count = fscanf(f, "%d%d", &freq, &policy);
+  fclose(f);
+
+  if ((count == 2) && (freq > 0) &&
+      (policy >= 0 && policy < schedTable_size)) {
+    // Okay, read in config values and they passed sanity checks.
+    // Update our config, logging any changes
+
+    if (freq != schedConfig.schedFreq)
+      logsc(EUCAINFO, "Changing scheduling frequency from %d to %d\n",
+          schedConfig.schedFreq, freq);
+    schedConfig.schedFreq = freq;
+
+    scAlgo newAlgo = schedTable[policy];
+    if (schedConfig.scheduler != newAlgo)
+      logsc(EUCAINFO, "Changing scheduling algorithm to %d\n", policy);
+    schedConfig.scheduler = newAlgo;
+
+    // Successfully read and updated config
+    return 1;
+  }
+
+  return 0;
 }
+
+static void readSchedConfig(void) {
+  if (!readSchedConfigFile()) {
+    // Default values
+    schedConfig.schedFreq = 30; //every 30 seconds
+    schedConfig.scheduler = noScheduler;
+  }
+}
+
 
 void *schedulerThread(void * unused) {
   int rc;
@@ -85,6 +137,7 @@ void *schedulerThread(void * unused) {
 
   while(1) {
 
+    readSchedConfig();
     logsc(EUCADEBUG, "running\n");
 
     schedule(&ccMeta);
@@ -116,7 +169,7 @@ void schedule(ncMetadata * ccMeta) {
   scheduledVM schedule[vmCount];
 
   // Call our scheduler...
-  int count = scheduler(&resourceCacheLocal, &instanceCacheLocal, &schedule[0]);
+  int count = schedConfig.scheduler(&resourceCacheLocal, &instanceCacheLocal, &schedule[0]);
   if (count == 0) {
     logsc(EUCADEBUG, "No VMs/instances scheduled\n");
     return;
