@@ -1261,6 +1261,12 @@ int refresh_resources(ncMetadata *ccMeta, int timeout, int dolock) {
   if (rc) {
     logprintfl(EUCAWARN, "refresh_resources(): bad return from update_config(), check your config file\n");
   }
+
+  // Block migrations from happening while we're getting resource/instance information.
+  // The migration lock is held throughout the migration, so grabbing it here means
+  // we'll never ask a resource about it's state DURING migration,
+  // preventing the confusing multi-homed instance state from confusing us (the CC).
+  sem_mywait(MIGRATE);
   
   // critical NC call section
   sem_mywait(RESCACHE);
@@ -1436,9 +1442,13 @@ int refresh_instances(ncMetadata *ccMeta, int timeout, int dolock) {
     }
   }
   
+
   sem_mywait(RESCACHE);
   memcpy(resourceCache, &resourceCacheLocal, sizeof(ccResourceCache));
   sem_mypost(RESCACHE);
+
+  // Release the migration lock, our work is done.
+  sem_mypost(MIGRATE);
   
   logprintfl(EUCADEBUG,"refresh_instances(): done\n");  
   return(0);
@@ -2432,6 +2442,7 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
   // This definitely should be async, but the current implementation blocks on the migration.
   ccResource * sourceResource = &resourceCacheLocal.resources[fromIdx];
   char * destHost = destResource->ip ? destResource->ip : destResource->hostname;
+
   rc = ncClientCall(ccMeta, timeout, NCCALL, sourceResource->ncURL, "ncMigrateInstance", instanceId, destHost, migrationURI, &migrationState, &previousState);
   free(migrationURI);
 
