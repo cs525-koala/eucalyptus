@@ -2428,7 +2428,8 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
   else
     migrationURI = getURI(destResource->hostname, listeningPort);
 
-  //asyncronous start, only verifying that it started
+  // Tell the sender to migrate the instance to the receiver.
+  // This definitely should be async, but the current implementation blocks on the migration.
   ccResource * sourceResource = &resourceCacheLocal.resources[fromIdx];
   char * destHost = destResource->ip ? destResource->ip : destResource->hostname;
   rc = ncClientCall(ccMeta, timeout, NCCALL, sourceResource->ncURL, "ncMigrateInstance", instanceId, destHost, migrationURI, &migrationState, &previousState);
@@ -2444,21 +2445,6 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
     sem_mypost(MIGRATE);
     return 1;
   }
-  //create & update ccInstance for reciever
-  memcpy(&recvInst, migrationInst, sizeof(ccInstance));
-  strncpy(recvInst.state, "Recv-Migration", sizeof(recvInst.state));
-  recvInst.ncHostIdx = toIdx;
-  //todo make sure this adds properly (doesn't bounce for repeated id/other weirdness) 
-  add_instanceCache(instanceId, &recvInst);
-
-  //update ccInstance state for sender
-  strncpy(migrationInst->state, "Send-Migration", sizeof(migrationInst->state));
-  refresh_instanceCache(instanceId, migrationInst);
-
-  //TODO KOALA: FINISH ME
-
-  // Sync back to the cache, see other functions on how to do this.
-  //    I think the add/refresh_instanceCache does this --Kevin
 
   sem_mypost(MIGRATE);
 
