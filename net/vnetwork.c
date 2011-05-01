@@ -824,6 +824,35 @@ int vnetGenerateNetworkParams(vnetConfig *vnetconfig, char *instId, int vlan, in
     }
   } else if (!strcmp(vnetconfig->mode, "SYSTEM")) {
     ret = 0;
+  
+    // So terribly hacktastic, but no time to do something better.
+    // We cycle through 172.22.28.192 through 172.22.28.254
+    // giving one out to each VM we spawn.
+    // Presently we don't even try to deal with the possibility of re-issuing
+    // an active address, which we should as a bare minimum sanity check.
+    // (But since we'd be checking caches, probably not the best)
+
+    static int assigned = 0;
+
+    int foundAddr = 0;
+    while (!foundAddr) {
+      char tentative[20];
+      int suffix = 192 + assigned++;
+      if (suffix > 254) assigned = 0;
+
+      snprintf(tentative, sizeof(tentative), "172.22.28.%d\n", suffix);
+
+      // TODO: Maybe at least scan the resource cache to see if this one is currently in use?
+
+      // For now just assign it.
+      strncpy(outprivip, tentative, 16);
+
+      // We assigned an address.  Later, if we check that this address isn't taken
+      // this flag would be more useful.
+      foundAddr = 1;
+    }
+
+
   } else if (!strcmp(vnetconfig->mode, "MANAGED") || !strcmp(vnetconfig->mode, "MANAGED-NOVLAN")) {
     if (nidx == -1) {
       networkIdx = -1;
