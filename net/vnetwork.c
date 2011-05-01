@@ -840,7 +840,7 @@ int vnetGenerateNetworkParams(vnetConfig *vnetconfig, char *instId, int vlan, in
       int suffix = 192 + assigned++;
       if (suffix > 254) assigned = 0;
 
-      snprintf(tentative, sizeof(tentative), "172.22.28.%d\n", suffix);
+      snprintf(tentative, sizeof(tentative), "172.22.28.%d", suffix);
 
       // TODO: Maybe at least scan the resource cache to see if this one is currently in use?
 
@@ -851,7 +851,6 @@ int vnetGenerateNetworkParams(vnetConfig *vnetconfig, char *instId, int vlan, in
       // this flag would be more useful.
       foundAddr = 1;
     }
-
 
   } else if (!strcmp(vnetconfig->mode, "MANAGED") || !strcmp(vnetconfig->mode, "MANAGED-NOVLAN")) {
     if (nidx == -1) {
