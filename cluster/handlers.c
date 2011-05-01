@@ -2391,7 +2391,7 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
     }
   }
 
-  timeout = ncGetTimeout(op_start, OP_TIMEOUT, 1, 1);
+  timeout = 120;// Two minutes
   ncInstance * retInstance;
   migrationInst->userData[0] = '\0';
   rc = ncClientCall(ccMeta, timeout, NCCALL, destResource->ncURL,
