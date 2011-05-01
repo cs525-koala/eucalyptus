@@ -461,7 +461,7 @@ int groupingScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, s
         if (candidateTargetResource->availCores < curInst->ccvm.cores) continue;
 
         // Okay, well see if it's the most used such resource...
-        if (!mostUsedResource || (balanceCompare(curResource, mostUsedResource) > 0.0)) {
+        if (!mostUsedResource || (balanceCompare(candidateTargetResource, mostUsedResource) > 0.0)) {
           mostUsedResource = candidateTargetResource;
         }
       }
