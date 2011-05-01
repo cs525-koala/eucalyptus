@@ -59,6 +59,14 @@ scAlgo schedTable[] = {
 };
 static int schedTable_size = sizeof(schedTable)/sizeof(schedTable[0]);
 
+// This needs to be same size as above array!!
+char * schedTableNames[] = {
+  "No scheduler",
+  "Balance scheduler",
+  "Grouping scheduler",
+  "Random scheduler"
+};
+
 static schedConfig_t schedConfig;
 
 // Because I'm lazy
@@ -94,15 +102,18 @@ static int readSchedConfigFile(void) {
     // Okay, read in config values and they passed sanity checks.
     // Update our config, logging any changes
 
-    if (freq != schedConfig.schedFreq)
+    if (freq != schedConfig.schedFreq) {
       logsc(EUCAINFO, "Changing scheduling frequency from %d to %d\n",
-          schedConfig.schedFreq, freq);
-    schedConfig.schedFreq = freq;
+                      schedConfig.schedFreq, freq);
+      schedConfig.schedFreq = freq;
+    }
 
     scAlgo newAlgo = schedTable[policy];
-    if (schedConfig.scheduler != newAlgo)
-      logsc(EUCAINFO, "Changing scheduling algorithm to %d\n", policy);
-    schedConfig.scheduler = newAlgo;
+    if (schedConfig.scheduler != newAlgo) {
+      logsc(EUCAINFO, "Changing scheduling algorithm to %s (%d)\n",
+                       schedTableNames[policy], policy);
+      schedConfig.scheduler = newAlgo;
+    }
 
     // Successfully read and updated config
     return 1;
