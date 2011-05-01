@@ -831,14 +831,13 @@ int vnetGenerateNetworkParams(vnetConfig *vnetconfig, char *instId, int vlan, in
     // Presently we don't even try to deal with the possibility of re-issuing
     // an active address, which we should as a bare minimum sanity check.
     // (But since we'd be checking caches, probably not the best)
-
-    static int assigned = 0;
+    // Also this probably isn't thread/process safe...
 
     int foundAddr = 0;
     while (!foundAddr) {
       char tentative[20];
-      int suffix = 192 + assigned++;
-      if (suffix > 254) assigned = 0;
+      int suffix = 192 + vnetconfig->assigned_suffix++;
+      if (suffix > 254) vnetconfig->assigned_suffix = 0;
 
       snprintf(tentative, sizeof(tentative), "172.22.28.%d", suffix);
 
