@@ -473,18 +473,18 @@ refresh_instance_info(	struct nc_state_t *nc,
 
 int
 get_instance_xml(	const char *gen_libvirt_cmd_path,
-			char *userId,
-			char *instanceId,
-			char *ramdiskId,
-			char *kernelId,
-			char *disk_path,
-			virtualMachine *params,
-			char *privMac,
-			//			char *privIp,
-			char *brname,
-			int use_virtio_net,
-			int use_virtio_root,
-			char **xml)
+                   char *userId,
+                   char *instanceId,
+                   char *ramdiskId,
+                   char *kernelId,
+                   char *disk_path,
+                   virtualMachine *params,
+                   char *privMac,
+                   char *privIp,
+                   char *brname,
+                   int use_virtio_net,
+                   int use_virtio_root,
+                   char **xml)
 {
     char buf [MAX_PATH];
 
@@ -520,7 +520,10 @@ get_instance_xml(	const char *gen_libvirt_cmd_path,
     replace_string (xml, "MEMORY", buf);
     snprintf(buf, CHAR_BUFFER_SIZE, "%d", params->cores);
     replace_string (xml, "VCPUS", buf);
-    
+
+    // Tell the instance its ip if we have one for it
+    replace_string (xml, "STATICIP", privIp);
+
     return 0;
 }
 
@@ -674,6 +677,7 @@ void *startup_thread (void * arg)
                               disk_path, 
                               &(instance->params), 
                               instance->ncnet.privateMac, 
+                              instance->ncnet.privateIp,
                               brname,
                               nc_state.config_use_virtio_net,
                               nc_state.config_use_virtio_root,

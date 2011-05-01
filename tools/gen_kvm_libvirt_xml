@@ -105,9 +105,9 @@ if ( $use_ramdisk ) {
 }
 
 if ( $use_virtio_root ) {
-    print "        <cmdline>root=/dev/vda1 console=ttyS0</cmdline>\n"
+    print "        <cmdline>root=/dev/vda1 console=ttyS0 MYIP=STATICIP</cmdline>\n"
 } else {
-    print "        <cmdline>root=/dev/sda1 console=ttyS0</cmdline>\n"
+    print "        <cmdline>root=/dev/sda1 console=ttyS0 MYIP=STATICIP</cmdline>\n"
 }
 
 print <<EOF;
