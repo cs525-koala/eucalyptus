@@ -71,6 +71,7 @@ char * schedTableNames[] = {
 static schedConfig_t schedConfig;
 static ncMetadata ccMeta;
 static time_t lastTick;
+static time_t adjust;
 static unsigned schedId;
 
 #define logsc(LOGLEVEL, formatstr, ...) \
@@ -161,6 +162,7 @@ static void schedInit(void) {
   srand((uintptr_t)&ccMeta + time(NULL));
 
   lastTick = 0; // Force a run
+  adjust = 0;
   schedId = 0;
 
   init = 1;
@@ -179,17 +181,17 @@ void schedulerTick(void) {
 
   schedId++; // Track which 'tick' this is, makes log reading easier.
 
-  logsc(EUCADEBUG, "Running, schedFreq: %d, elapsed: %d\n",
-    schedConfig.schedFreq, (int)(diff));
+  logsc(EUCADEBUG, "Running, schedFreq: %d, elapsed: %d, adjust %d\n",
+    schedConfig.schedFreq, (int)(diff-adjust), (int)(adjust));
 
   schedule(&ccMeta);
 
   // If we overshoot by a whole event, just drop it
-  diff %= schedConfig.schedFreq;
+  adjust = diff % schedConfig.schedFreq;
 
   // Try to accomodate being calling on ticks that our schedule
   // might not be a clean multiple of, or even be consistent.
-  lastTick = now - diff;
+  lastTick = now - adjust;
 }
 
 void schedule(ncMetadata * ccMeta) {
