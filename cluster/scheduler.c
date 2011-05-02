@@ -111,6 +111,7 @@ static int readSchedConfigFile(void) {
     logsc(EUCAINFO, "Changing scheduling frequency from %d to %d\n",
         schedConfig.schedFreq, freq);
     schedConfig.schedFreq = freq;
+    lastTick = 0; adjust = 0;
   }
 
   scAlgo newAlgo = schedTable[policy];
@@ -161,7 +162,7 @@ static void schedInit(void) {
 
   srand((uintptr_t)&ccMeta + time(NULL));
 
-  lastTick = 0; // Force a run
+  lastTick = 0;
   adjust = 0;
   schedId = 0;
 
@@ -174,7 +175,7 @@ void schedulerTick(void) {
 
   time_t now = time(NULL);
   time_t diff = now - lastTick;
-  if (diff < schedConfig.schedFreq) {
+  if (diff < schedConfig.schedFreq - adjust) {
     logsc_dbg("Not enough time, sleeping until next tick\n");
     return;
   }
@@ -182,16 +183,23 @@ void schedulerTick(void) {
   schedId++; // Track which 'tick' this is, makes log reading easier.
 
   logsc(EUCADEBUG, "Running, schedFreq: %d, elapsed: %d, adjust %d\n",
-    schedConfig.schedFreq, (int)(diff-adjust), (int)(adjust));
+    schedConfig.schedFreq, (int)(diff), (int)(adjust));
 
   schedule(&ccMeta);
 
-  // If we overshoot by a whole event, just drop it
-  adjust = diff % schedConfig.schedFreq;
+  if (lastTick != 0) {
+    // Try to accomodate being calling on ticks that our schedule
+    // might not be a clean multiple of, or even be consistent.
+    adjust = diff - (schedConfig.schedFreq - adjust);
 
-  // Try to accomodate being calling on ticks that our schedule
-  // might not be a clean multiple of, or even be consistent.
-  lastTick = now - adjust;
+    // Never adjust by more than half the period
+    // If we overshoot by more than this, we don't care (incl dropping ticks)
+    int maxval = schedConfig.schedFreq/2;
+    if (adjust < -maxval) adjust = -maxval;
+    if (adjust > maxval) adjust = maxval;
+  }
+
+  lastTick = now;
 }
 
 void schedule(ncMetadata * ccMeta) {
