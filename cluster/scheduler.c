@@ -71,14 +71,15 @@ char * schedTableNames[] = {
 static schedConfig_t schedConfig;
 static ncMetadata ccMeta;
 static time_t lastTick;
+static unsigned schedId;
 
 #define logsc(LOGLEVEL, formatstr, ...) \
-  logprintfl(LOGLEVEL, "schedulerTick(): " formatstr, ##__VA_ARGS__)
+  logprintfl(LOGLEVEL, "schedulerTick(%d): " formatstr, schedId, ##__VA_ARGS__)
 
 #define logsc_dbg(formatstr, ...) \
   do { \
     if (schedConfig.debugLog) \
-      logprintfl(EUCADEBUG, "schedulerTick(): (f %s) " formatstr, __FUNCTION__, ##__VA_ARGS__); \
+      logsc(EUCADEBUG, "(dbg %s) " formatstr, __FUNCTION__, ##__VA_ARGS__); \
   } while(0)
 
 
@@ -160,6 +161,7 @@ static void schedInit(void) {
   srand((uintptr_t)&ccMeta + time(NULL));
 
   lastTick = 0; // Force a run
+  schedId = 0;
 
   init = 1;
 }
@@ -174,6 +176,8 @@ void schedulerTick(void) {
     logsc_dbg("Not enough time, sleeping until next tick\n");
     return;
   }
+
+  schedId++; // Track which 'tick' this is, makes log reading easier.
 
   logsc(EUCADEBUG, "Running, schedFreq: %d, elapsed: %d\n",
     schedConfig.schedFreq, (int)(diff));
