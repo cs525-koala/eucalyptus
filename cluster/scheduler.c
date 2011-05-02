@@ -3,7 +3,7 @@
  *
  *       Filename:  scheduler.cpp
  *
- *    Description:  Scheduler thread and implementation
+ *    Description:  Scheduler implementation
  *
  *        Version:  1.0
  *        Created:  03/31/2011 06:18:40 PM
@@ -69,25 +69,18 @@ char * schedTableNames[] = {
 };
 
 static schedConfig_t schedConfig;
+static ncMetadata ccMeta;
+static time_t lastTick;
 
 #define logsc(LOGLEVEL, formatstr, ...) \
-  logprintfl(LOGLEVEL, "schedulerThread(): " formatstr, ##__VA_ARGS__)
+  logprintfl(LOGLEVEL, "schedulerTick(): " formatstr, ##__VA_ARGS__)
 
 #define logsc_dbg(formatstr, ...) \
   do { \
     if (schedConfig.debugLog) \
-      logprintfl(EUCADEBUG, "schedulerThread(): (f %s) " formatstr, __FUNCTION__, ##__VA_ARGS__); \
+      logprintfl(EUCADEBUG, "schedulerTick(): (f %s) " formatstr, __FUNCTION__, ##__VA_ARGS__); \
   } while(0)
 
-static void setSignalHandler(void) {
-  // set up default signal handler for this child process (for SIGTERM)
-  struct sigaction newsigact;
-  newsigact.sa_handler = SIG_DFL;
-  newsigact.sa_flags = 0;
-  sigemptyset(&newsigact.sa_mask);
-  sigprocmask(SIG_SETMASK, &newsigact.sa_mask, NULL);
-  sigaction(SIGTERM, &newsigact, NULL);
-}
 
 // Read the scheduler configuration
 static int readSchedConfigFile(void) {
@@ -144,10 +137,18 @@ static void readSchedConfig(void) {
   }
 }
 
+static void schedInit(void) {
 
-void *schedulerThread(void * unused) {
-  int rc;
-  ncMetadata ccMeta;
+  static int init = 0;
+
+  // Re-read the config file every time
+  readSchedConfig();
+
+  if (init) return;
+
+  logsc(EUCAINFO, "Initializing Migration Scheduler...\n");
+
+
   ccMeta.correlationId = strdup("scheduler");
   ccMeta.userId = strdup("eucalyptus");
 
@@ -158,25 +159,33 @@ void *schedulerThread(void * unused) {
 
   srand((uintptr_t)&ccMeta + time(NULL));
 
-  readSchedConfig();
+  lastTick = 0; // Force a run
 
-  while(1) {
+  init = 1;
+}
 
-    readSchedConfig();
-    logsc(EUCADEBUG, "running\n");
+void schedulerTick(void) {
 
-    schedule(&ccMeta);
+  schedInit();
 
-    shawn();
-
-    logsc(EUCADEBUG, "done, sleeping for %d\n", schedConfig.schedFreq);
-
-    sleep(schedConfig.schedFreq);
+  time_t now = time(NULL);
+  time_t diff = now - lastTick;
+  if (diff < schedConfig.schedFreq) {
+    logsc_dbg("Not enough time, sleeping until next tick\n");
+    return;
   }
 
+  logsc(EUCADEBUG, "Running, schedFreq: %d, elapsed: %d\n",
+    schedConfig.schedFreq, (int)(diff));
 
+  schedule(&ccMeta);
 
-  return NULL;
+  // If we overshoot by a whole event, just drop it
+  diff %= schedConfig.schedFreq;
+
+  // Try to accomodate being calling on ticks that our schedule
+  // might not be a clean multiple of, or even be consistent.
+  lastTick = now - diff;
 }
 
 void schedule(ncMetadata * ccMeta) {

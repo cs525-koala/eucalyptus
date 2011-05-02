@@ -2607,6 +2607,10 @@ void *monitor_thread(void *in) {
     // Migrations may happen now.
     sem_mypost(MIGRATE);
 
+    // TODO: Enforce that the scheduler runs with up-to-date information
+    // with use of locks.  For now we just assume/hope this works.
+    schedulerTick();
+
     sem_mywait(CONFIG);
     if (config->kick_dhcp) {
       rc = vnetKickDHCP(vnetconfig);
@@ -2648,25 +2652,6 @@ int init_pthreads() {
       exit(0);
     } else {
       config->threads[MONITOR] = pid;
-    }
-  }
-
-  if (config->threads[SCHEDULER] == 0 || check_process(config->threads[SCHEDULER], "httpd-cc.conf")) {
-    int pid;
-    pid = fork();
-    if (!pid) {
-      // set up default signal handler for this child process (for SIGTERM)
-      struct sigaction newsigact;
-      newsigact.sa_handler = SIG_DFL;
-      newsigact.sa_flags = 0;
-      sigemptyset(&newsigact.sa_mask);
-      sigprocmask(SIG_SETMASK, &newsigact.sa_mask, NULL);
-      sigaction(SIGTERM, &newsigact, NULL);
-
-      schedulerThread(NULL);
-      exit(0);
-    } else {
-      config->threads[SCHEDULER] = pid;
     }
   }
 

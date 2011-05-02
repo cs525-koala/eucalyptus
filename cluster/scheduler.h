@@ -17,6 +17,6 @@
 
 #ifndef _SCHEDULER_H_
 
-void *schedulerThread(void *);
+void schedulerTick(void);
 
 #endif // _SCHEDULER_H_
