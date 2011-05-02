@@ -1262,12 +1262,6 @@ int refresh_resources(ncMetadata *ccMeta, int timeout, int dolock) {
     logprintfl(EUCAWARN, "refresh_resources(): bad return from update_config(), check your config file\n");
   }
 
-  // Block migrations from happening while we're getting resource/instance information.
-  // The migration lock is held throughout the migration, so grabbing it here means
-  // we'll never ask a resource about it's state DURING migration,
-  // preventing the confusing multi-homed instance state from confusing us (the CC).
-  sem_mywait(MIGRATE);
-  
   // critical NC call section
   sem_mywait(RESCACHE);
   memcpy(&resourceCacheLocal, resourceCache, sizeof(ccResourceCache));
@@ -1441,15 +1435,12 @@ int refresh_instances(ncMetadata *ccMeta, int timeout, int dolock) {
       }
     }
   }
-  
+
 
   sem_mywait(RESCACHE);
   memcpy(resourceCache, &resourceCacheLocal, sizeof(ccResourceCache));
   sem_mypost(RESCACHE);
 
-  // Release the migration lock, our work is done.
-  sem_mypost(MIGRATE);
-  
   logprintfl(EUCADEBUG,"refresh_instances(): done\n");  
   return(0);
 }
@@ -2597,6 +2588,12 @@ void *monitor_thread(void *in) {
 
     logprintfl(EUCADEBUG, "monitor_thread(): running\n");
 
+    // Block migrations from happening while we're getting resource/instance information.
+    // The migration lock is held throughout the migration, so grabbing it here means
+    // we'll never ask a resource about it's state DURING migration,
+    // preventing the confusing multi-homed instance state from confusing us (the CC).
+    sem_mywait(MIGRATE);
+
     rc = refresh_resources(&ccMeta, 60, 1);
     if (rc) {
       logprintfl(EUCAWARN, "monitor_thread(): call to refresh_resources() failed in monitor thread\n");
@@ -2606,6 +2603,9 @@ void *monitor_thread(void *in) {
     if (rc) {
       logprintfl(EUCAWARN, "monitor_thread(): call to refresh_instances() failed in monitor thread\n");
     }
+
+    // Migrations may happen now.
+    sem_mypost(MIGRATE);
 
     sem_mywait(CONFIG);
     if (config->kick_dhcp) {
