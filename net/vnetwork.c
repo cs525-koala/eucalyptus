@@ -837,7 +837,7 @@ int vnetGenerateNetworkParams(vnetConfig *vnetconfig, char *instId, int vlan, in
     while (!foundAddr) {
       char tentative[20];
       int suffix = 192 + vnetconfig->assigned_suffix++;
-      if (suffix > 254) vnetconfig->assigned_suffix = 0;
+      if (suffix >= 254) vnetconfig->assigned_suffix = 0;
 
       snprintf(tentative, sizeof(tentative), "172.22.28.%d", suffix);
 
