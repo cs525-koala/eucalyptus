@@ -2382,7 +2382,11 @@ int doMigrateInstance(ncMetadata *ccMeta, char *instanceId, char *from_node, cha
     }
   }
 
-  timeout = 45; // Call timeout as 45 seconds.
+  // Hardcode blocking time to 2 minutes.
+  // This might be back since we're holding the migration lock
+  // (and so the monitor_thread can't make progress)
+  // Will revisit once see how this works in practice.
+  timeout = 120;
   ncInstance * retInstance;
   migrationInst->userData[0] = '\0';
   rc = ncClientCall(ccMeta, timeout, NCCALL, destResource->ncURL,
