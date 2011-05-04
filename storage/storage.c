@@ -788,6 +788,8 @@ static long long get_cached_file (const char * user_id, const char * url, const 
     char tmp_digest_path [BUFSIZE];
 	char cached_dir      [BUFSIZE]; 
 	char cached_path     [BUFSIZE];
+	char tmp_cached_dir  [BUFSIZE]; 
+	char tmp_cached_path [BUFSIZE];
 	char staging_path    [BUFSIZE];
 	char digest_path     [BUFSIZE];
 
@@ -795,6 +797,8 @@ static long long get_cached_file (const char * user_id, const char * url, const 
 	snprintf (tmp_digest_path, BUFSIZE, "%s-digest",      file_path);
 	snprintf (cached_dir,      BUFSIZE, "%s/%s/cache/%s", sc_instance_path, EUCALYPTUS_ADMIN, file_id); /* cache is in admin's directory */
 	snprintf (cached_path,     BUFSIZE, "%s/%s",          cached_dir, file_name);
+	snprintf (tmp_cached_dir,  BUFSIZE, "%s/%s/cache/tmp/%s", sc_instance_path, EUCALYPTUS_ADMIN, file_id); /* cache is in admin's directory */
+	snprintf (tmp_cached_path, BUFSIZE, "%s/%s",          tmp_cached_dir, file_name);
 	snprintf (staging_path,    BUFSIZE, "%s-staging",     cached_path);
 	snprintf (digest_path,     BUFSIZE, "%s-digest",      cached_path);
 
@@ -806,6 +810,7 @@ retry:
 
 	struct stat mystat;
     int cached_exists  = ! stat (cached_path, &mystat);
+    int tmp_cached_exists  = ! stat (tmp_cached_path, &mystat);
     int staging_exists = ! stat (staging_path, &mystat);
 
     int e = ERROR;
@@ -869,41 +874,88 @@ retry:
     
     switch (action) {
     case STAGE:
+      if (!should_cache) {
         logprintfl (EUCAINFO, "downloading and preparing image into %s...\n", file_path);		
         e = walrus_image_by_manifest_url (url, file_path, 1);
 
         /* for KVM, convert partition into disk */
         if (e==OK && convert_to_disk) { 
-            sem_p (s);
-            sem_p (disk_sem);
-            /* for the cached disk swap==0 and ephemeral==0 as we'll append them below */
-            if ((e=vrun("%s %s %d %d", disk_convert_command_path, file_path, 0, 0))!=0) {
-                logprintfl (EUCAERROR, "error: partition-to-disk image conversion command failed\n");
-            }
-	    sem_v(disk_sem);
-            sem_v (s);
-            
-            /* recalculate file size now that it was converted */
-            if ( stat (file_path, &mystat ) != 0 ) {
-                logprintfl (EUCAERROR, "error: file %s not found\n", file_path);
-            } else if (mystat.st_size < 1) {
-                logprintfl (EUCAERROR, "error: file %s has the size of 0\n", file_path);
-            } else {
-                file_size_b = (long long)mystat.st_size;
-            }
+          sem_p (s);
+          sem_p (disk_sem);
+          /* for the cached disk swap==0 and ephemeral==0 as we'll append them below */
+          if ((e=vrun("%s %s %d %d", disk_convert_command_path, file_path, 0, 0))!=0) {
+            logprintfl (EUCAERROR, "error: partition-to-disk image conversion command failed\n");
+          }
+          sem_v(disk_sem);
+          sem_v (s);
+
+          /* recalculate file size now that it was converted */
+          if ( stat (file_path, &mystat ) != 0 ) {
+            logprintfl (EUCAERROR, "error: file %s not found\n", file_path);
+          } else if (mystat.st_size < 1) {
+            logprintfl (EUCAERROR, "error: file %s has the size of 0\n", file_path);
+          } else {
+            file_size_b = (long long)mystat.st_size;
+          }
         }
 
-	sem_p (disk_sem);
-        /* cache the partition or disk, if possible */
-        if ( e==OK && should_cache ) {
-            if ( (e=vrun ("cp -dR %s %s", file_path, cached_path)) != 0) {
-                logprintfl (EUCAERROR, "failed to copy file %s into cache at %s\n", file_path, cached_path);
-            }
-            if ( e==OK && (e=vrun ("cp -dR %s %s", tmp_digest_path, digest_path)) != 0) {
-                logprintfl (EUCAERROR, "failed to copy digest file %s into cache at %s\n", tmp_digest_path, digest_path);
-            }
+      }
+      else
+      {
+        logprintfl (EUCAINFO, "downloading and preparing image into %s...\n", tmp_cached_path);		
+
+        // Remove temporary cache file if it exists
+        if ( tmp_cached_exists) unlink(tmp_cached_path);
+
+        ensure_path_exists (tmp_cached_dir);
+
+        e = walrus_image_by_manifest_url (url, tmp_cached_path, 1);
+
+        /* for KVM, convert partition into disk */
+        if (e==OK && convert_to_disk) {
+          sem_p (s);
+          sem_p (disk_sem);
+          /* for the cached disk swap==0 and ephemeral==0 as we'll append them below */
+          if ((e=vrun("%s %s %d %d", disk_convert_command_path, tmp_cached_path, 0, 0))!=0) {
+            logprintfl (EUCAERROR, "error: partition-to-disk image conversion command failed\n");
+          }
+          sem_v(disk_sem);
+          sem_v (s);
+
+          /* recalculate file size now that it was converted */
+          if ( stat (tmp_cached_path, &mystat ) != 0 ) {
+            logprintfl (EUCAERROR, "error: file %s not found\n", tmp_cached_path);
+          } else if (mystat.st_size < 1) {
+            logprintfl (EUCAERROR, "error: file %s has the size of 0\n", tmp_cached_path);
+          } else {
+            file_size_b = (long long)mystat.st_size;
+          }
+        }
+
+        sem_p (disk_sem);
+        // If all went well, promote to normal/main cache
+        if ( e==OK ) {
+
+          // Move from tmp-cache to main cache
+          if ( (e=vrun ("mv %s %s", tmp_cached_path, cached_path)) != 0) {
+            logprintfl (EUCAERROR, "failed to move file %s into cache at %s\n", tmp_cached_path, cached_path);
+          }
+          if ( e==OK && (e=vrun ("mv %s %s", tmp_digest_path, digest_path)) != 0) {
+            logprintfl (EUCAERROR, "failed to move digest file %s into cache at %s\n", tmp_digest_path, digest_path);
+          }
+
+          // Copy to the actual instance location
+          // For us, this is done last because it's on a network share.
+          if ( e==OK &&  (e=vrun ("cp -dR %s %s", cached_path, file_path)) != 0) {
+            logprintfl (EUCAERROR, "failed to copy cached file %s into instance folder at %s\n", cached_path, file_path);
+          }
+          if ( e==OK && (e=vrun ("cp -dR %s %s", cached_path, file_path)) != 0) {
+            logprintfl (EUCAERROR, "failed to copy cached digest file %s into instance folder at %s\n", cached_path, file_path);
+          }
         }
 	sem_v (disk_sem);
+
+      }
         
         sem_p (sc_sem);
         if (should_cache) {
@@ -915,9 +967,13 @@ retry:
             unlink (tmp_digest_path);
             if (should_cache) {
                 unlink (cached_path);
+                unlink (tmp_cached_path);
                 unlink (digest_path);
                 if ( rmdir(cached_dir) ) {
                     logprintfl (EUCAWARN, "warning: failed to remove cache directory %s\n", cached_dir);
+                }
+                if ( rmdir(tmp_cached_dir) ) {
+                    logprintfl (EUCAWARN, "warning: failed to remove tmp_cache directory %s\n", tmp_cached_dir);
                 }
             }
         }
@@ -943,6 +999,7 @@ retry:
         } else if ((e=walrus_verify_digest (url, digest_path))<0) {
             /* negative status => digest changed */
             unlink (cached_path);
+            unlink (tmp_cached_path);
             unlink (staging_path); /* TODO: needed? */
             unlink (digest_path);
             if ( rmdir (cached_dir) ) {
