@@ -2158,76 +2158,59 @@ int doRebootInstances(ncMetadata *meta, char **instIds, int instIdsLen) {
 }
 
 int doTerminateInstances(ncMetadata *ccMeta, char **instIds, int instIdsLen, int **outStatus) {
-  int i, j, shutdownState, previousState, rc, start, stop, done=0, timeout, ret=0;
+  int i, j, shutdownState, previousState, rc;
   char *instId;
   ccInstance *myInstance=NULL;
   ncStub *ncs;
   time_t op_start;
   ccResourceCache resourceCacheLocal;
+  int *result;
 
   i = j = 0;
   instId = NULL;
   myInstance = NULL;
+  result = NULL;
   op_start = time(NULL);
-  
+
   rc = initialize();
   if (rc) {
     return(1);
   }
   logprintfl(EUCAINFO,"TerminateInstances(): called\n");
   logprintfl(EUCADEBUG,"TerminateInstances(): params: userId=%s, instIdsLen=%d, firstInstId=%s\n", SP(ccMeta ? ccMeta->userId : "UNSET"), instIdsLen, SP(instIdsLen ? instIds[0] : "UNSET"));
-  
+
   sem_mywait(RESCACHE);
   memcpy(&resourceCacheLocal, resourceCache, sizeof(ccResourceCache));
   sem_mypost(RESCACHE);
-  
 
+  // For each instance...
   for (i=0; i<instIdsLen; i++) {
-    instId = instIds[i];
-    rc = find_instanceCacheId(instId, &myInstance);
-    if (!rc) {
-      // found the instance in the cache
-      if (!strcmp(myInstance->state, "Pending") || !strcmp(myInstance->state, "Extant") || !strcmp(myInstance->state, "Unknown")) {
-	start = myInstance->ncHostIdx;
-	stop = start+1;
-      } else {
-	// instance is not in a terminatable state
-	start = 0;
-	stop = 0;
-	(*outStatus)[i] = 0;
-      }
-      
-      rc = free_instanceNetwork(myInstance->ccnet.privateMac, myInstance->ccnet.vlan, 1, 1);
+   instId = instIds[i];
 
-      free(myInstance);
-    } else {
-      // instance is not in cache, try all resources
-      start = 0;
-      stop = 0;
-      (*outStatus)[i] = 0;      
-    }
-    
-    
-    done=0;
-    for (j=start; j<stop && !done; j++) {
-      if (resourceCacheLocal.resources[j].state == RESUP) {
+   // 0 means at least one node reported the instance terminated
+   // 1 means nary a node said it was able to terminate it
+   // (You can have multiple nodes if this instance is mid-migration)
+   result = &(*outStatus)[i];
+   *result = 1;
 
-	rc = ncClientCall(ccMeta, 0, NCCALL, resourceCacheLocal.resources[j].ncURL, "ncTerminateInstance", instId, &shutdownState, &previousState);
-	if (rc) {
-	  (*outStatus)[i] = 1;
-	  logprintfl(EUCAWARN, "TerminateInstances(): failed to terminate '%s': instance may not exist any longer\n", instId);
-	  ret = 1;
-	} else {
-	  (*outStatus)[i] = 0;
-	  ret = 0;
-	  done++;
-	}
-      }
+   // Send terminate request to all resources
+   for (j = 0; j < resourceCacheLocal.numResources; ++j) {
+
+    // Only bother sending it to resources that (we think) are awake.
+    if (resourceCacheLocal.resources[j].state == RESUP) {
+
+     // Tell this resource to terminate it if it can/has it/etc.
+     *result &= ncClientCall(ccMeta, 0, NCCALL, resourceCacheLocal.resources[j].ncURL, "ncTerminateInstance", instId, &shutdownState, &previousState);
     }
+   }
+
+   if (*result) {
+      logprintfl(EUCAWARN, "TerminateInstances(): failed to terminate '%s': instance may not exist any longer\n", instId);
+   }
   }
-  
+
   logprintfl(EUCADEBUG,"TerminateInstances(): done.\n");
-  
+
   shawn();
 
   return(0);
