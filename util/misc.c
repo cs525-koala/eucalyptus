@@ -980,6 +980,9 @@ int vrun (const char * fmt, ...)
 	if ((e = system (buf)) != 0) {
 		logprintfl (EUCAERROR, "system(%s) failed with %d\n", buf, e); /* TODO: remove? */
 	}
+	else {
+		logprintfl (EUCADEBUG, "system(%s) succeeded!\n", buf);
+	}
 	return e;
 }
 

@@ -156,8 +156,22 @@ find_and_terminate_instance (
 	int err;
 
 	instance = find_instance(&global_instances, instanceId);
-	if (instance == NULL) 
-		return NOT_FOUND;
+	if (instance == NULL)  {
+	  // TODO: HACK
+	  // Don't give up so easily.  Ignore libvirt and kill any kvm processes
+	  // that have this instance id in their name.
+
+	  // Hmm I have yet to see this actually work, we'll see.
+	  err = vrun("ps ax|grep /usr/bin/kvm|grep 'name %s'|awk '{print $2}'|xargs kill -9", instanceId);
+	  if (err != OK) {
+	    return NOT_FOUND;
+	  }
+
+	  logprintfl(EUCAINFO, "libvirt claimed dind't have it, but we killed it!\n");
+
+	  return OK;
+	}
+
 	* instance_p = instance;
 
 	/* try stopping the domain */
