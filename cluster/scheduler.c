@@ -74,6 +74,9 @@ static time_t lastTick;
 static time_t adjust;
 static unsigned schedId;
 
+ccInstanceCache *schedInstanceCache;
+ccResourceCache *schedResourceCache;
+
 #define logsc(LOGLEVEL, formatstr, ...) \
   logprintfl(LOGLEVEL, "schedulerTick(%d): " formatstr, schedId, ##__VA_ARGS__)
 
@@ -147,10 +150,11 @@ static void schedInit(void) {
   // Re-read the config file every time
   readSchedConfig();
 
+  // TODO: Singleton initialization, lock!!
+  // (Shared-memory lock, like the others..)
   if (init) return;
 
   logsc(EUCAINFO, "Initializing Migration Scheduler...\n");
-
 
   ccMeta.correlationId = strdup("scheduler");
   ccMeta.userId = strdup("eucalyptus");
@@ -204,23 +208,25 @@ void schedulerTick(void) {
 
 void schedule(ncMetadata * ccMeta) {
 
-  ccResourceCache resourceCacheLocal;
-  ccInstanceCache instanceCacheLocal;
+  sem_mywait(SCHEDRESCACHE);
+  sem_mywait(SCHEDINSTCACHE);
 
   sem_mywait(RESCACHE);
-  memcpy(&resourceCacheLocal, resourceCache, sizeof(ccResourceCache));
+  memcpy(schedResourceCache, resourceCache, sizeof(ccResourceCache));
   sem_mypost(RESCACHE);
   sem_mywait(INSTCACHE);
-  memcpy(&instanceCacheLocal, instanceCache, sizeof(ccInstanceCache));
+  memcpy(schedInstanceCache, instanceCache, sizeof(ccInstanceCache));
   sem_mypost(INSTCACHE);
 
-  const int vmCount = instanceCacheLocal.numInsts;
+  const int vmCount = schedInstanceCache->numInsts;
   scheduledVM schedule[vmCount];
 
   // Call our scheduler...
-  int count = schedConfig.scheduler(&resourceCacheLocal, &instanceCacheLocal, &schedule[0]);
+  int count = schedConfig.scheduler(schedResourceCache, schedInstanceCache, &schedule[0]);
   if (count == 0) {
     logsc(EUCADEBUG, "No VMs/instances scheduled\n");
+    sem_mypost(SCHEDINSTCACHE);
+    sem_mypost(SCHEDRESCACHE);
     return;
   }
 
@@ -232,7 +238,7 @@ void schedule(ncMetadata * ccMeta) {
     ccInstance * VM = schedule[i].instance;
     ccResource * targetResource = schedule[i].resource;
 
-    ccResource * sourceResource = &resourceCacheLocal.resources[VM->ncHostIdx];
+    ccResource * sourceResource = &schedResourceCache->resources[VM->ncHostIdx];
     if (sourceResource == targetResource) {
       logsc(EUCAERROR, "Scheduler indicated we should move %s to resource %s that it's already on??",
           VM->instanceId, targetResource->hostname);
@@ -259,6 +265,9 @@ void schedule(ncMetadata * ccMeta) {
       logsc(EUCAINFO, "Migration of %s appears successful!\n", VM->instanceId);
     }
   }
+
+  sem_mypost(SCHEDINSTCACHE);
+  sem_mypost(SCHEDRESCACHE);
 }
 
 char isSchedulable(ccInstance *inst) {

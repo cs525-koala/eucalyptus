@@ -17,6 +17,12 @@
 
 #ifndef _SCHEDULER_H_
 
+#include <handlers.h>
+
 void schedulerTick(void);
+
+extern ccInstanceCache *schedInstanceCache;
+
+extern ccResourceCache *schedResourceCache;
 
 #endif // _SCHEDULER_H_
