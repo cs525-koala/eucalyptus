@@ -203,8 +203,9 @@ void schedulerTick(void) {
 }
 
 void schedule(ncMetadata * ccMeta) {
-  static ccResourceCache resourceCacheLocal;
-  static ccInstanceCache instanceCacheLocal;
+
+  ccResourceCache resourceCacheLocal;
+  ccInstanceCache instanceCacheLocal;
 
   sem_mywait(RESCACHE);
   memcpy(&resourceCacheLocal, resourceCache, sizeof(ccResourceCache));
