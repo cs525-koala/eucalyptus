@@ -1279,6 +1279,7 @@ int refresh_resources(ncMetadata *ccMeta, int timeout, int dolock) {
 	  logprintfl(EUCADEBUG, "refresh_resources(): resource still waking up (%d more seconds until marked as down)\n", config->wakeThresh - (time(NULL) - resourceCacheLocal.resources[i].stateChange));
 	} else{
 	  logprintfl(EUCAERROR,"refresh_resources(): bad return from ncDescribeResource(%s) (%d)\n", resourceCacheLocal.resources[i].hostname, rc);
+          logprintfl(EUCAERROR,"\t state: (%d), stateChange: (%d), wakeThresh: (%d)\n", resourceCacheLocal.resources[i].state, resourceCacheLocal.resources[i].stateChange, config->wakeThresh);
 	  resourceCacheLocal.resources[i].maxMemory = 0;
 	  resourceCacheLocal.resources[i].availMemory = 0;
 	  resourceCacheLocal.resources[i].maxDisk = 0;
