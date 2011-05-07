@@ -170,6 +170,9 @@ static void schedInit(void) {
   adjust = 0;
   schedId = 0;
 
+  // Allocate our caches...
+  schedResourceCache = (ccResourceCache*)malloc(sizeof(ccResourceCache));
+  schedInstanceCache = (ccInstanceCache*)malloc(sizeof(ccInstanceCache));
   //TODO: Initialize the caches as invalid?
 
   init = 1;
@@ -177,12 +180,14 @@ static void schedInit(void) {
 
 void schedulerTick(void) {
 
+  sem_mywait(SCHEDULER);
   schedInit();
 
   time_t now = time(NULL);
   time_t diff = now - lastTick;
   if (diff < schedConfig.schedFreq - adjust) {
     logsc_dbg("Not enough time, sleeping until next tick\n");
+    sem_mypost(SCHEDULER);
     return;
   }
 
@@ -206,6 +211,8 @@ void schedulerTick(void) {
   }
 
   lastTick = now;
+
+  sem_mypost(SCHEDULER);
 }
 
 void updateSchedResCache(void) {
@@ -247,9 +254,6 @@ void updateSchedInstCache(void) {
 
 void schedule(ncMetadata * ccMeta) {
 
-  sem_mywait(SCHEDRESCACHE);
-  sem_mywait(SCHEDINSTCACHE);
-
   updateSchedResCache();
   updateSchedInstCache();
 
@@ -260,8 +264,6 @@ void schedule(ncMetadata * ccMeta) {
   int count = schedConfig.scheduler(schedResourceCache, schedInstanceCache, &schedule[0]);
   if (count == 0) {
     logsc(EUCADEBUG, "No VMs/instances scheduled\n");
-    sem_mypost(SCHEDINSTCACHE);
-    sem_mypost(SCHEDRESCACHE);
     return;
   }
 
@@ -301,8 +303,6 @@ void schedule(ncMetadata * ccMeta) {
     }
   }
 
-  sem_mypost(SCHEDINSTCACHE);
-  sem_mypost(SCHEDRESCACHE);
 }
 
 char isSchedulable(ccInstance *inst) {

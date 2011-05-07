@@ -77,7 +77,7 @@ permission notice:
 
 enum {SHARED_MEM, SHARED_FILE};
 enum {INIT, CONFIG, VNET, INSTCACHE, RESCACHE, NCCALL,
-      MIGRATE, SCHEDINSTCACHE, SCHEDRESCACHE, ENDLOCK};
+      MIGRATE, SCHEDULER, ENDLOCK};
 
 typedef struct instance_t {
   char instanceId[16];

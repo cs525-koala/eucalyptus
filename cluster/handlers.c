@@ -2708,6 +2708,7 @@ int init_thread(void) {
 
     locks[NCCALL] = sem_open("/eucalyptusCCncCallLock", O_CREAT, 0644, 4);
     locks[MIGRATE] = sem_open("/eucalyptusCCmigrationLock", O_CREAT, 0644, 1);
+    locks[SCHEDULER] = sem_open("/eucalyptusCCschedulerLock", O_CREAT, 0644, 1);
     
     if (config == NULL) {
       rc = setup_shared_buffer((void **)&config, "/eucalyptusCCConfig", sizeof(ccConfig), &(locks[CONFIG]), "/eucalyptusCCConfigLock", SHARED_FILE);
@@ -2736,25 +2737,6 @@ int init_thread(void) {
       }
     }
 
-    // TODO: This doesn't go here, but I don't have time ATM to do this 'right'.
-    if (schedInstanceCache == NULL) {
-      rc = setup_shared_buffer((void **)&schedInstanceCache, "/eucalyptusCCschedInstanceCache", sizeof(ccInstanceCache), &(locks[SCHEDINSTCACHE]), "/eucalyptusCCschedInstanceCacheLock", SHARED_FILE);
-      if (rc != 0) {
-        fprintf(stderr, "init_thread(): Cannot set up shared memory region for ccInstanceCache, exiting...\n");
-        sem_mypost(INIT);
-        exit(1);
-      }
-    }
-
-    if (schedResourceCache == NULL) {
-      rc = setup_shared_buffer((void **)&schedResourceCache, "/eucalyptusCCschedResourceCache", sizeof(ccResourceCache), &(locks[SCHEDRESCACHE]), "/eucalyptusCCschedResourceCacheLock", SHARED_FILE);
-      if (rc != 0) {
-        fprintf(stderr, "init_thread(): Cannot set up shared memory region for ccSchedResourceCache, exiting...\n");
-        sem_mypost(INIT);
-        exit(1);
-      }
-    }
-    
     if (vnetconfig == NULL) {
       rc = setup_shared_buffer((void **)&vnetconfig, "/eucalyptusCCVNETConfig", sizeof(vnetConfig), &(locks[VNET]), "/eucalyptusCCVNETConfigLock", SHARED_FILE);
       if (rc != 0) {
