@@ -708,6 +708,7 @@ int dynScheduler(scheduledVM* schedule) {
         testing.instOwner[i] = j;
 
         int testing_score = scoreSystem(&monitorInfo, &testing);
+        testing_score -= migrationCost(&monitorInfo, &testing, i, j);
 
         if (testing_score > best_score) {
           best_score = testing_score;
