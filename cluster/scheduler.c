@@ -301,7 +301,7 @@ void schedule(ncMetadata * ccMeta) {
     // Migrate the VM!
     //int result = doMigrateInstance(ccMeta, VM->instanceId, sourceResource->hostname, targetResource->hostname);
     int result = 1; // ERROR
-    logsc(EUCAINFO, "Temporarily have migration disabled, ignore error below");
+    logsc(EUCAINFO, "Temporarily have migration disabled, ignore error below\n");
 
     if (result) {
       logsc(EUCAERROR, "Error migrating %s from %s to %s!\n",
