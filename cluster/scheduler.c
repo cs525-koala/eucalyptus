@@ -643,6 +643,9 @@ void readSystemState(monitorInfo_t * m) {
   const int resCount = schedResourceCache->numResources;
   const int instCount = schedInstanceCache->numInsts;
 
+  // Initialize all values...
+  memset(m,0,sizeof(monitorInfo_t));
+
   FILE * f = fopen("/tmp/monitor.config", "r");
   if (!f) return;
 
@@ -724,7 +727,7 @@ int dynScheduler(scheduledVM* schedule) {
 
   // Score the system.
   int baseline = scoreSystem(&monitorInfo, &system);
-  logsc_dbg( "Baseline score: %d\n", baseline);
+  logsc_dbg("Baseline score: %d\n", baseline);
 
   // Find the highest scoring schedule using a single migration
   int best_score = baseline;
@@ -739,7 +742,7 @@ int dynScheduler(scheduledVM* schedule) {
         int migrate_cost = migrationCost(&monitorInfo, &testing, i, j);
         int new_score = new_system - migrate_cost;
 
-        logsc_dbg( "If we moved %s to %s, score would change from %d to %d\n",
+        logsc_dbg("If we moved %s to %s, score would change from %d to %d\n",
           schedInstanceCache->instances[i].instanceId,
           schedResourceCache->resources[j].ip,
           baseline,
