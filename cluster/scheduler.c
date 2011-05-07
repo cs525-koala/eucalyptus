@@ -170,6 +170,8 @@ static void schedInit(void) {
   adjust = 0;
   schedId = 0;
 
+  //TODO: Initialize the caches as invalid?
+
   init = 1;
 }
 
@@ -206,17 +208,50 @@ void schedulerTick(void) {
   lastTick = now;
 }
 
+void updateSchedResCache(void) {
+  sem_mywait(RESCACHE);
+  memcpy(schedResourceCache, resourceCache, sizeof(ccResourceCache));
+  sem_mypost(RESCACHE);
+}
+
+void updateSchedInstCache(void) {
+
+  // (Stolen from/Inspired by handlers.c's doDescribeInstances)
+  // Not memcpy'ing the whole thing is useful, by checking the cacheState array
+  // we avoid bringing in the entire (HUGE) instances array
+  // (either from instanceCache or from schedInstanceCache)
+  // This has huge memory savings.
+
+  sem_mywait(INSTCACHE);
+
+  int i, count = 0;
+  if (instanceCache->numInsts) {
+
+    for (i=0; i<MAXINSTANCES; i++) {
+      if (instanceCache->cacheState[i] == INSTVALID) {
+        if (count >= instanceCache->numInsts) {
+          logsc(EUCAWARN, "found more instances than reported by numInsts, will only schedule on a subset of instances\n");
+          count=0;
+        }
+        memcpy(&(schedInstanceCache->instances[count]),
+               &(instanceCache->instances[i]),
+               sizeof(ccInstance));
+        count++;
+      }
+    }
+
+    schedInstanceCache->numInsts = instanceCache->numInsts;
+  }
+  sem_mypost(INSTCACHE);
+}
+
 void schedule(ncMetadata * ccMeta) {
 
   sem_mywait(SCHEDRESCACHE);
   sem_mywait(SCHEDINSTCACHE);
 
-  sem_mywait(RESCACHE);
-  memcpy(schedResourceCache, resourceCache, sizeof(ccResourceCache));
-  sem_mypost(RESCACHE);
-  sem_mywait(INSTCACHE);
-  memcpy(schedInstanceCache, instanceCache, sizeof(ccInstanceCache));
-  sem_mypost(INSTCACHE);
+  updateSchedResCache();
+  updateSchedInstCache();
 
   const int vmCount = schedInstanceCache->numInsts;
   scheduledVM schedule[vmCount];
