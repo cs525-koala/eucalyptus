@@ -27,6 +27,12 @@
 #include <misc.h>
 #include <handlers.h>
 
+// For (temporary) simplicity's sake
+// assume we never have more than this many instances
+#define SCHED_INSTANCE_MAX 100
+// Same for resources.
+#define SCHED_RESOURCE_MAX 10
+
 static void schedule(ncMetadata * ccMeta);
 
 typedef struct {
@@ -46,6 +52,7 @@ typedef struct {
 int balanceScheduler(scheduledVM*);
 int groupingScheduler(scheduledVM*);
 int funScheduler(scheduledVM*);
+int dynScheduler(scheduledVM*);
 
 // Default, does nothing.
 int noScheduler(scheduledVM* unused) {
@@ -56,16 +63,18 @@ scAlgo schedTable[] = {
   noScheduler,
   balanceScheduler,
   groupingScheduler,
-  funScheduler
+  funScheduler,
+  dynScheduler
 };
 static int schedTable_size = sizeof(schedTable)/sizeof(schedTable[0]);
 
 // This needs to be same size as above array!!
 char * schedTableNames[] = {
-  "No scheduler",
+  "(No scheduler)",
   "Balance scheduler",
   "Grouping scheduler",
-  "Random scheduler"
+  "Random scheduler",
+  "Dynamic Feedback-Driven Scheduler"
 };
 
 static schedConfig_t schedConfig;
@@ -602,4 +611,114 @@ int groupingScheduler(scheduledVM* schedule) {
 
   // If we got this far, we didn't find something to schedule.  Better luck next time!
   return 0;
+}
+
+typedef struct {
+  // 0 to 100 cpu utilization
+  int cpuUtil;
+} nodeInfo_t;
+
+typedef struct {
+  // 0 to 100 cpu utilization
+  int cpuUtil;
+} instInfo_t;
+
+// Contains the dynamic monitoring information of the nodes/instances
+typedef struct {
+  nodeInfo_t nodeInfo[SCHED_RESOURCE_MAX];
+  instInfo_t instInfo[SCHED_INSTANCE_MAX];
+} monitorInfo_t;
+
+// Contains the mapping of instances to their hosting nodes/owners.
+typedef struct {
+  int instOwner[SCHED_INSTANCE_MAX];
+} schedule_t;
+
+void readSystemState(monitorInfo_t * m) {
+  // TODO: Read this from a file!
+
+  // Eventually this would be dynamically reported by the nc's
+  // (for themselves and their instances)
+
+  // For now make up some semi-arbitary values...
+  int i;
+
+  int resCount = schedResourceCache->numResources;
+  int instCount = schedInstanceCache->numInsts;
+
+  for (i = 0; i < resCount; ++i) {
+    double nodeFraction = (double)i/(double)resCount;
+    m->nodeInfo[i].cpuUtil = nodeFraction * 50.0 + 50.0;
+  }
+
+  for (i = 0; i < instCount; ++i) {
+    double instFraction = (double)i/(double)instCount;
+    m->instInfo[i].cpuUtil = instFraction * 100.0;
+  }
+
+}
+
+int scoreSystem(monitorInfo_t * m, schedule_t * s) {
+  // TODO parameterize this scoring so that we can play with it.
+
+  //TODO: Make me do anything at all!
+  return 10;
+
+}
+
+int migrationCost(monitorInfo_t * m, schedule_t * s, int instId, int targetNode) {
+  // Computes cost of migration instance from where it is to the specified node
+
+  // TODO: Actually do this.
+  return 10; // Magic, arbitrary, etc.
+}
+
+int dynScheduler(scheduledVM* schedule) {
+
+  // Algorithm:
+  // Score the system, as sum of 'suitability' scores of each node with respect to the instances on it.
+  // For each possible migration:
+  //   Calculate cost of migration itself
+  // If the score of the new system outweighs the cost of migration, then do it!
+
+  const int resCount = schedResourceCache->numResources;
+  const int instCount = schedInstanceCache->numInsts;
+  int i, j;
+
+  // Get dynamic monitoring information about the system (from wherever)
+  monitorInfo_t monitorInfo;
+  readSystemState(&monitorInfo);
+
+  // Build the 'schedule' for the existing system...
+  schedule_t system;
+  for (i = 0; i < instCount; ++i) {
+    system.instOwner[i] = schedInstanceCache->instances[i].ncHostIdx;
+  }
+
+  // Score the system.
+  int baseline = scoreSystem(&monitorInfo, &system);
+
+  // Find the highest scoring schedule using a single migration
+  int best_score = baseline;
+
+  for(i = 0; i < instCount; ++i) {
+      schedule_t testing = system;
+
+      for (j = 0; j < resCount; ++j) {
+        testing.instOwner[i] = j;
+
+        int testing_score = scoreSystem(&monitorInfo, &testing);
+
+        if (testing_score > best_score) {
+          best_score = testing_score;
+
+          // Indicate that we should do this.
+          // Note that if we find a better one later, we'll overwrite this.
+          schedule[0].instance = &schedInstanceCache->instances[j];
+          schedule[0].resource = &schedResourceCache->resources[j];
+        }
+      }
+  }
+
+  return best_score > baseline;
 }
