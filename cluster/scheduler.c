@@ -34,7 +34,7 @@ typedef struct {
   ccResource * resource;
 } scheduledVM;
 
-typedef int (*scAlgo)(ccResourceCache *, ccInstanceCache *, scheduledVM *);
+typedef int (*scAlgo)(scheduledVM *);
 
 // "Knobs" go here.
 typedef struct {
@@ -43,12 +43,12 @@ typedef struct {
   int debugLog;
 } schedConfig_t;
 
-int balanceScheduler(ccResourceCache *, ccInstanceCache *, scheduledVM*);
-int groupingScheduler(ccResourceCache *, ccInstanceCache *, scheduledVM*);
-int funScheduler(ccResourceCache *, ccInstanceCache *, scheduledVM*);
+int balanceScheduler(scheduledVM*);
+int groupingScheduler(scheduledVM*);
+int funScheduler(scheduledVM*);
 
 // Default, does nothing.
-int noScheduler(ccResourceCache * unused1, ccInstanceCache * unused2, scheduledVM* unused3) {
+int noScheduler(scheduledVM* unused) {
   return 0;
 }
 
@@ -261,7 +261,7 @@ void schedule(ncMetadata * ccMeta) {
   scheduledVM schedule[vmCount];
 
   // Call our scheduler...
-  int count = schedConfig.scheduler(schedResourceCache, schedInstanceCache, &schedule[0]);
+  int count = schedConfig.scheduler(&schedule[0]);
   if (count == 0) {
     logsc(EUCADEBUG, "No VMs/instances scheduled\n");
     return;
@@ -345,21 +345,21 @@ int* randomizedOrder(int count) {
 }
 
 // Returns count of VMs the scheduler wants to move.
-int balanceScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, scheduledVM* schedule) {
+int balanceScheduler(scheduledVM* schedule) {
   // TODO KOALA: Algorithm stability??
 
   // Simple algorithm:
   // Find the 'least' used host, and the 'most' used host, and move a VM from the most to the least.
 
   int i;
-  const int resCount = resCache->numResources;
+  const int resCount = schedResourceCache->numResources;
   int * instOrder = randomizedOrder(MAXINSTANCES);
   int * resOrder = randomizedOrder(resCount);
 
   // Find most and least used resources...
   ccResource *mostUsedResource = NULL, *leastUsedResource = NULL;
   for (i = 0; i < resCount; ++i) {
-    ccResource * curResource = &resCache->resources[resOrder[i]];
+    ccResource * curResource = &schedResourceCache->resources[resOrder[i]];
     logsc_dbg("Looking at %s (Util %f)\n",
         curResource->hostname, resourceCoreUtil(curResource));
 
@@ -380,11 +380,11 @@ int balanceScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, sc
     // For now, just find any instance that is 'worth' moving
 
     for(i = 0; i < MAXINSTANCES; ++i) {
-      ccInstance * curInst = &instCache->instances[instOrder[i]];
-      ccResource * curResource = &resCache->resources[curInst->ncHostIdx];
+      ccInstance * curInst = &schedInstanceCache->instances[instOrder[i]];
+      ccResource * curResource = &schedResourceCache->resources[curInst->ncHostIdx];
 
       // Only consider valid cache entries
-      if (instCache->cacheState[instOrder[i]] != INSTVALID) continue;
+      if (schedInstanceCache->cacheState[instOrder[i]] != INSTVALID) continue;
       logsc_dbg("Looking at instance %s on %s...\n",
         curInst->instanceId, curResource->hostname);
 
@@ -427,11 +427,11 @@ int balanceScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, sc
 
 // Returns count of VMs the scheduler wants to move.
 // This schedule is just to have fun while we're writing the paper O:)
-int funScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, scheduledVM* schedule) {
+int funScheduler(scheduledVM* schedule) {
 
   int i, j, k;
 
-  const int resCount = resCache->numResources;
+  const int resCount = schedResourceCache->numResources;
   int * instOrder = randomizedOrder(MAXINSTANCES);
   int * resOrder = randomizedOrder(resCount);
   int * resOrder2 = randomizedOrder(resCount);
@@ -439,17 +439,17 @@ int funScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, schedu
 
   // Find a resource to migrate from...
   for (i = 0; i < resCount; ++i) {
-    ccResource *sourceResource = &resCache->resources[resOrder[i]];
+    ccResource *sourceResource = &schedResourceCache->resources[resOrder[i]];
     logsc_dbg("Looking at %s\n", sourceResource->hostname);
 
     // Go through all instances, considering those that are on sourceResource
     // (no good way to just get resource->instance listing)
     for (j = 0; j < MAXINSTANCES; ++j) {
-      ccInstance * curInst = &instCache->instances[instOrder[j]];
-      ccResource * curResource = &resCache->resources[curInst->ncHostIdx];
+      ccInstance * curInst = &schedInstanceCache->instances[instOrder[j]];
+      ccResource * curResource = &schedResourceCache->resources[curInst->ncHostIdx];
 
       // Only consider valid cache entries
-      if (instCache->cacheState[instOrder[j]] != INSTVALID) continue;
+      if (schedInstanceCache->cacheState[instOrder[j]] != INSTVALID) continue;
 
       logsc_dbg("Looking at %s (on %s)\n", curInst->instanceId, curResource->hostname);
 
@@ -461,7 +461,7 @@ int funScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, schedu
         // Find some resource that can take it...
         for (k = 0; k < resCount; ++k) {
 
-          ccResource * targetResource = &resCache->resources[resOrder2[k]];
+          ccResource * targetResource = &schedResourceCache->resources[resOrder2[k]];
           logsc_dbg("Considering moving %s from %s to %s...\n",
               curInst->instanceId, sourceResource->hostname, targetResource->hostname);
 
@@ -497,7 +497,7 @@ int funScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, schedu
 }
 
 // Attempts to put move machines from less used ones to more used ones
-int groupingScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, scheduledVM* schedule) {
+int groupingScheduler(scheduledVM* schedule) {
   // TODO KOALA: Algorithm stability??
 
 
@@ -508,7 +508,7 @@ int groupingScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, s
 
   int i, j;
 
-  const int resCount = resCache->numResources;
+  const int resCount = schedResourceCache->numResources;
   int * instOrder = randomizedOrder(MAXINSTANCES);
   int * resOrder = randomizedOrder(resCount);
   int * resOrder2 = randomizedOrder(resCount);
@@ -516,7 +516,7 @@ int groupingScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, s
   // Find least used resource...
   ccResource *leastUsedResource = NULL;
   for (i = 0; i < resCount; ++i) {
-    ccResource * curResource = &resCache->resources[resOrder[i]];
+    ccResource * curResource = &schedResourceCache->resources[resOrder[i]];
     logsc_dbg("Looking at %s (Util %f)\n",
         curResource->hostname, resourceCoreUtil(curResource));
 
@@ -538,11 +538,11 @@ int groupingScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, s
 
   // Find instances for this resource...
   for(i = 0; i < MAXINSTANCES; ++i) {
-    ccInstance * curInst = &instCache->instances[instOrder[i]];
-    ccResource * curResource = &resCache->resources[curInst->ncHostIdx];
+    ccInstance * curInst = &schedInstanceCache->instances[instOrder[i]];
+    ccResource * curResource = &schedResourceCache->resources[curInst->ncHostIdx];
 
     // Only consider valid cache entries
-    if (instCache->cacheState[instOrder[i]] != INSTVALID) continue;
+    if (schedInstanceCache->cacheState[instOrder[i]] != INSTVALID) continue;
 
     if (!isSchedulable(curInst)) continue;
 
@@ -554,7 +554,7 @@ int groupingScheduler(ccResourceCache * resCache, ccInstanceCache * instCache, s
       for (j = 0; j < resCount; ++j) {
 
         logsc_dbg("Index: %d\n", resOrder2[j]);
-        ccResource * candidateTargetResource = &resCache->resources[resOrder2[j]];
+        ccResource * candidateTargetResource = &schedResourceCache->resources[resOrder2[j]];
 
         logsc_dbg("Target Looking at %s (Util %f)\n",
             candidateTargetResource->hostname, resourceCoreUtil(candidateTargetResource));
