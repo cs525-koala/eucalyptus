@@ -2740,18 +2740,18 @@ int init_thread(void) {
     if (schedInstanceCache == NULL) {
       rc = setup_shared_buffer((void **)&schedInstanceCache, "/eucalyptusCCschedInstanceCache", sizeof(ccInstanceCache), &(locks[SCHEDINSTCACHE]), "/eucalyptusCCschedInstanceCacheLock", SHARED_FILE);
       if (rc != 0) {
-	fprintf(stderr, "init_thread(): Cannot set up shared memory region for ccInstanceCache, exiting...\n");
-	sem_mypost(INIT);
-	exit(1);
+        fprintf(stderr, "init_thread(): Cannot set up shared memory region for ccInstanceCache, exiting...\n");
+        sem_mypost(INIT);
+        exit(1);
       }
     }
 
     if (schedResourceCache == NULL) {
       rc = setup_shared_buffer((void **)&schedResourceCache, "/eucalyptusCCschedResourceCache", sizeof(ccResourceCache), &(locks[SCHEDRESCACHE]), "/eucalyptusCCschedResourceCacheLock", SHARED_FILE);
       if (rc != 0) {
-	fprintf(stderr, "init_thread(): Cannot set up shared memory region for ccSchedResourceCache, exiting...\n");
-	sem_mypost(INIT);
-	exit(1);
+        fprintf(stderr, "init_thread(): Cannot set up shared memory region for ccSchedResourceCache, exiting...\n");
+        sem_mypost(INIT);
+        exit(1);
       }
     }
     
