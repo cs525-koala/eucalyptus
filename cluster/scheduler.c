@@ -662,6 +662,7 @@ void readSystemState(monitorInfo_t * m) {
 
       for (i = 0; i < resCount && !done; ++i) {
         if (!strcmp(buf, schedResourceCache->resources[i].ip)) {
+          logsc_dbg("Updating resource %s with cpu value %d\n", buf, val);
           m->nodeInfo[i].cpuUtil = val;
           done = 1;
         }
@@ -670,6 +671,7 @@ void readSystemState(monitorInfo_t * m) {
 
       for (i = 0; i < instCount && !done; ++i) {
         if (!strcmp(buf, schedInstanceCache->instances[i].instanceId)) {
+          logsc_dbg("Updating instance %s with cpu value %d\n", buf, val);
           m->nodeInfo[i].cpuUtil = val;
           done = 1;
         }
@@ -722,6 +724,7 @@ int dynScheduler(scheduledVM* schedule) {
 
   // Score the system.
   int baseline = scoreSystem(&monitorInfo, &system);
+  logsc_dbg( "Baseline score: %d\n", baseline);
 
   // Find the highest scoring schedule using a single migration
   int best_score = baseline;
@@ -732,15 +735,22 @@ int dynScheduler(scheduledVM* schedule) {
       for (j = 0; j < resCount; ++j) {
         testing.instOwner[i] = j;
 
-        int testing_score = scoreSystem(&monitorInfo, &testing);
-        testing_score -= migrationCost(&monitorInfo, &testing, i, j);
+        int new_system = scoreSystem(&monitorInfo, &testing);
+        int migrate_cost = migrationCost(&monitorInfo, &testing, i, j);
+        int new_score = new_system - migrate_cost;
 
-        if (testing_score > best_score) {
-          best_score = testing_score;
+        logsc_dbg( "If we moved %s to %s, score would change from %d to %d\n",
+          schedInstanceCache->instances[i].instanceId,
+          schedResourceCache->resources[j].ip,
+          baseline,
+          new_score);
+
+        if (new_score > best_score) {
+          best_score = new_score;
 
           // Indicate that we should do this.
           // Note that if we find a better one later, we'll overwrite this.
-          schedule[0].instance = &schedInstanceCache->instances[j];
+          schedule[0].instance = &schedInstanceCache->instances[i];
           schedule[0].resource = &schedResourceCache->resources[j];
         }
       }
