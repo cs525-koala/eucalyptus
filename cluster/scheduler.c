@@ -640,21 +640,46 @@ void readSystemState(monitorInfo_t * m) {
   // Eventually this would be dynamically reported by the nc's
   // (for themselves and their instances)
 
-  // For now make up some semi-arbitary values...
+  const int resCount = schedResourceCache->numResources;
+  const int instCount = schedInstanceCache->numInsts;
+
+  FILE * f = fopen("/tmp/monitor.config", "r");
+  if (!f) return;
+
+  // TODO: Trust the file (and it being formatted correctly)
+  // significantly less, esp regarding allocations/etc...
+
   int i;
+  char line[1024];
+  while (fgets(line, sizeof(line), f)) {
 
-  int resCount = schedResourceCache->numResources;
-  int instCount = schedInstanceCache->numInsts;
+    char buf[sizeof(line)];
+    int val;
+    int count = sscanf(line, "%s %d\n", buf, &val);
 
-  for (i = 0; i < resCount; ++i) {
-    double nodeFraction = (double)i/(double)resCount;
-    m->nodeInfo[i].cpuUtil = nodeFraction * 50.0 + 50.0;
+    int done = 0;
+    if (count == 2) {
+
+      for (i = 0; i < resCount && !done; ++i) {
+        if (!strcmp(buf, schedResourceCache->resources[i].ip)) {
+          m->nodeInfo[i].cpuUtil = val;
+          done = 1;
+        }
+      }
+      if (done) break;
+
+      for (i = 0; i < instCount && !done; ++i) {
+        if (!strcmp(buf, schedInstanceCache->instances[i].instanceId)) {
+          m->nodeInfo[i].cpuUtil = val;
+          done = 1;
+        }
+      }
+      if (done) break;
+
+    }
   }
 
-  for (i = 0; i < instCount; ++i) {
-    double instFraction = (double)i/(double)instCount;
-    m->instInfo[i].cpuUtil = instFraction * 100.0;
-  }
+  fclose(f);
 
 }
 
