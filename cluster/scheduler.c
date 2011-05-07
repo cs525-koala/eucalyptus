@@ -690,8 +690,41 @@ void readSystemState(monitorInfo_t * m) {
 int scoreSystem(monitorInfo_t * m, schedule_t * s) {
   // TODO parameterize this scoring so that we can play with it.
 
-  //TODO: Make me do anything at all!
-  return 10;
+  int i, j;
+  int totalScore = 0;
+
+  const int resCount = schedResourceCache->numResources;
+  const int instCount = schedInstanceCache->numInsts;
+
+  for (i = 0; i < resCount; ++i) {
+    ccResource * curResource = &schedResourceCache->resources[i];
+
+    // Calculate how much cpu the instances would be using if they
+    // had free reign of their allocated cores.
+    int instsUtil = 0;
+    for (j = 0; j < instCount; ++j) {
+      ccInstance * curInst = &schedInstanceCache->instances[j];
+
+      if (s->instOwner[j] == i) {
+        instsUtil += m->instInfo[j].cpuUtil * curInst->ccvm.cores;
+      }
+    }
+
+    int resourceAvail = curResource->maxCores * (100 - m->nodeInfo[i].cpuUtil);
+
+    int resourceScore = resourceAvail - instsUtil;
+
+    // TODO: Review the reasoning here!!
+    // If we have CPU to spare here, we're fine.
+    if (resourceScore > 0) resourceScore = 0;
+
+    logsc_dbg("Resource %s has score %d (avail: %d, insts: %d)\n",
+      curResource->ip, resourceScore, resourceAvail, instsUtil);
+
+    totalScore += resourceScore;
+  }
+
+  return totalScore;
 
 }
 
