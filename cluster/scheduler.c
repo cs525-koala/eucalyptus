@@ -668,13 +668,14 @@ void readSystemState(monitorInfo_t * m) {
         if (!strcmp(buf, schedResourceCache->resources[i].ip)) {
           logsc_dbg("Updating resource %s with cpu value %d\n", buf, val);
           m->nodeInfo[i].cpuUtil = val;
+          break;
         }
       }
 
       for (i = 0; i < instCount; ++i) {
         if (!strcmp(buf, schedInstanceCache->instances[i].instanceId)) {
           logsc_dbg("Updating instance %s with cpu value %d\n", buf, val);
-          m->nodeInfo[i].cpuUtil = val;
+          m->instInfo[i].cpuUtil = val;
           break;
         }
       }
