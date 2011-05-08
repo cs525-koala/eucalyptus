@@ -55,6 +55,7 @@ int balanceScheduler(scheduledVM*);
 int groupingScheduler(scheduledVM*);
 int funScheduler(scheduledVM*);
 int dynScheduler(scheduledVM*);
+int manualScheduler(scheduledVM*);
 
 // Default, does nothing.
 int noScheduler(scheduledVM* unused) {
@@ -66,7 +67,8 @@ scAlgo schedTable[] = {
   balanceScheduler,
   groupingScheduler,
   funScheduler,
-  dynScheduler
+  dynScheduler,
+  manualScheduler
 };
 static int schedTable_size = sizeof(schedTable)/sizeof(schedTable[0]);
 
@@ -77,6 +79,7 @@ char * schedTableNames[] = {
   "Grouping scheduler",
   "Random scheduler",
   "Dynamic Feedback-Driven Scheduler"
+  "Manual scheduler"
 };
 
 static schedConfig_t schedConfig;
@@ -314,6 +317,19 @@ void schedule(ncMetadata * ccMeta) {
     }
   }
 
+  // If we just ran in the manualScheduler, jump out.
+  if (schedConfig.scheduler == manualScheduler) {
+
+    FILE * f = fopen("/tmp/sched.config", "w");
+    if (!f) return;
+
+    fprintf(f, "%d\n%d\n%d",
+        schedConfig.schedFreq,
+        0, // No Scheduler
+        schedConfig.debugLog);
+
+    fclose(f);
+  }
 }
 
 char isSchedulable(ccInstance *inst) {
@@ -894,4 +910,55 @@ int dynScheduler(scheduledVM* schedule) {
   }
 
   return 0;
+}
+
+int manualScheduler(scheduledVM* schedule) {
+  // Special 1-off scheduler.
+  // Read in schedule from file, and make it happen!
+
+  // File format is <instid> <nc ip>
+
+  const int resCount = schedResourceCache->numResources;
+  const int instCount = schedInstanceCache->numInsts;
+
+  FILE * f = fopen("/tmp/sched.manual", "r");
+  if (!f) return 0;
+
+  int i, j;
+  char line[1024];
+
+  int schedCount = 0;
+  while (fgets(line, sizeof(line), f)) {
+
+    char instid[sizeof(line)];
+    char ncip[sizeof(line)];
+    int count = sscanf(line, "%s %s\n", instid, ncip);
+
+    if (count == 2) {
+
+      for (i = 0; i < resCount; ++i) {
+        ccResource * curResource = &schedResourceCache->resources[i];
+        if (!strcmp(ncip, curResource->ip)) {
+          for (j = 0; j < instCount; ++j) {
+            ccInstance * curInst = &schedInstanceCache->instances[j];
+            if (!strcmp(instid, curInst->instanceId)) {
+              // We have a match!
+
+              if (schedCount < schedInstanceCache->numInsts) {
+                schedule[schedCount].instance = curInst;
+                schedule[schedCount].resource = curResource;
+                schedCount++;
+              } else {
+                logsc(EUCAERROR, "Too many items in the schedule!\n");
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  fclose(f);
+
+  return schedCount;
 }
