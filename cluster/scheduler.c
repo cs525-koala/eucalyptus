@@ -807,18 +807,10 @@ migration_t findBestMigration(monitorInfo_t * monitorInfo, schedule_t * system, 
           // If we do this migration, but enables a sufficiently better configuration
           // with additional migrations, use the final score as the score for
           // this migration, but at a penalty.
-          int effectiveNextScore = nextMigration.score - MIGRATION_COST; // XXX TODO: MAGIC NUMBER
+          int effectiveNextScore = nextMigration.score - MIGRATION_COST;
           if (effectiveNextScore > thisMigration.score) {
             thisMigration.depth = nextMigration.depth;
             thisMigration.score = effectiveNextScore;
-
-            if (depth == 2) {
-              logsc_dbg("Best move is now %s to %s, score: %d baseline: %d\n",
-                schedInstanceCache->instances[i].instanceId,
-                schedResourceCache->resources[j].ip,
-                thisMigration.score,
-                baseline);
-            }
           }
 
         }
@@ -827,6 +819,14 @@ migration_t findBestMigration(monitorInfo_t * monitorInfo, schedule_t * system, 
           best_score = thisMigration.score;
 
           migration = thisMigration;
+
+          if (depth == 2) {
+            logsc_dbg("Best move is now %s to %s, score: %d baseline: %d\n",
+                schedInstanceCache->instances[i].instanceId,
+                schedResourceCache->resources[j].ip,
+                migration.score,
+                baseline);
+          }
         }
       }
   }
