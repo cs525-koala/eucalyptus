@@ -78,7 +78,7 @@ char * schedTableNames[] = {
   "Balance scheduler",
   "Grouping scheduler",
   "Random scheduler",
-  "Dynamic Feedback-Driven Scheduler"
+  "Dynamic Feedback-Driven Scheduler",
   "Manual scheduler"
 };
 
