@@ -291,8 +291,9 @@ void schedule(ncMetadata * ccMeta) {
 
     ccResource * sourceResource = &schedResourceCache->resources[VM->ncHostIdx];
     if (sourceResource == targetResource) {
-      logsc(EUCAERROR, "Scheduler indicated we should move %s to resource %s that it's already on??",
-          VM->instanceId, targetResource->hostname);
+      if (schedConfig.scheduler != manualScheduler)
+        logsc(EUCAERROR, "Scheduler indicated we should move %s to resource %s that it's already on??\n",
+            VM->instanceId, targetResource->hostname);
       continue;
     }
 
