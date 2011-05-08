@@ -718,6 +718,8 @@ int scoreSystem(monitorInfo_t * m, schedule_t * s) {
     // If we have CPU to spare here, we're fine.
     if (resourceScore > 0) resourceScore = 0;
 
+    resourceScore += curResource->maxCores * 100;
+
     //logsc_dbg("Resource %s has score %d (avail: %d, insts: %d)\n",
     //  curResource->ip, resourceScore, resourceAvail, instsUtil);
 
@@ -726,6 +728,24 @@ int scoreSystem(monitorInfo_t * m, schedule_t * s) {
 
   return totalScore;
 
+}
+
+int canHoldInstance(schedule_t * s, int res, int inst) {
+
+  // Determine if moving inst to res 'works'...
+
+  int usedCores = 0;
+  const int instCount = schedInstanceCache->numInsts;
+  int i;
+
+  for (i = 0; i < instCount; ++i) {
+     if (s->instOwner[i] == res)
+       usedCores += schedInstanceCache->instances[i].ccvm.cores;
+  }
+
+  usedCores += schedInstanceCache->instances[inst].ccvm.cores;
+
+  return usedCores <= schedResourceCache->resources[res].maxCores;
 }
 
 int migrationCost(monitorInfo_t * m, schedule_t * s, int instId, int targetNode) {
@@ -776,9 +796,7 @@ migration_t findBestMigration(monitorInfo_t * monitorInfo, schedule_t * system, 
         if (system->instOwner[i] == j) continue;
 
         // If this host can't hold this instance, skip!
-        ccInstance * instance = &schedInstanceCache->instances[i];
-        ccResource * resource = &schedResourceCache->resources[j];
-        if (resource->availCores < instance->ccvm.cores) continue;
+        if (!canHoldInstance(system, j, i)) continue;
 
         testing.instOwner[i] = j;
 
@@ -799,21 +817,25 @@ migration_t findBestMigration(monitorInfo_t * monitorInfo, schedule_t * system, 
 
 
         // Use this migration as step towards next one, and explore those:
+        migration_t nextMigration;
         if (depth > 1) {
           schedule_t nextstep = testing;
-          scheduledVM nextVM;
-          migration_t nextMigration = findBestMigration(monitorInfo, &nextstep, depth - 1);
+          nextMigration = findBestMigration(monitorInfo, &nextstep, depth - 1);
 
           // If we do this migration, but enables a sufficiently better configuration
           // with additional migrations, use the final score as the score for
           // this migration, but at a penalty.
           int effectiveNextScore = nextMigration.score - MIGRATION_COST;
+          //logsc_dbg("Recursion: Comparing %d to %d (base: %d)\n",
+          //  effectiveNextScore, thisMigration.score, baseline);
           if (effectiveNextScore > thisMigration.score) {
             thisMigration.depth = nextMigration.depth;
             thisMigration.score = effectiveNextScore;
           }
 
         }
+
+        //logsc_dbg("Comparing %d vs %d, %d\n", thisMigration.score, best_score, depth);
 
         if (thisMigration.score > best_score) {
           best_score = thisMigration.score;
@@ -827,6 +849,11 @@ migration_t findBestMigration(monitorInfo_t * monitorInfo, schedule_t * system, 
                 migration.score,
                 baseline,
                 migration.depth);
+            if (migration.depth < 2) {
+              logsc_dbg("(Best when combined with moving %s to %s)\n",
+                  schedInstanceCache->instances[nextMigration.instanceId].instanceId,
+                  schedResourceCache->resources[nextMigration.targetResource].ip);
+            }
           }
         }
       }
@@ -850,6 +877,8 @@ int dynScheduler(scheduledVM* schedule) {
   for (i = 0; i < instCount; ++i) {
     system.instOwner[i] = schedInstanceCache->instances[i].ncHostIdx;
   }
+  int baseline = scoreSystem(&monitorInfo, &system);
+  logsc_dbg("Looking to improve upon baseline: %d\n", baseline);
 
   migration_t migration = findBestMigration(&monitorInfo, &system, 2);
 
