@@ -266,25 +266,9 @@ void updateSchedInstCache(void) {
   sem_mypost(INSTCACHE);
 }
 
-void schedule(ncMetadata * ccMeta) {
-
-  updateSchedResCache();
-  updateSchedInstCache();
-
-  const int vmCount = schedInstanceCache->numInsts;
-  scheduledVM schedule[vmCount];
-
-  // Call our scheduler...
-  int count = schedConfig.scheduler(&schedule[0]);
-  if (count == 0) {
-    logsc(EUCADEBUG, "No VMs/instances scheduled\n");
-    return;
-  }
-
-  // Scheduler algorithm returned us set of VM's it wants us to move.
-  // ...Attempt to do so!
-
+int applySchedule(scheduledVM* schedule, int count, ncMetadata * ccMeta) {
   int i;
+  int err = 0;
   for (i = 0; i < count; ++i) {
     ccInstance * VM = schedule[i].instance;
     ccResource * targetResource = schedule[i].resource;
@@ -307,6 +291,7 @@ void schedule(ncMetadata * ccMeta) {
     // Migrate the VM!
     int result = doMigrateInstance(ccMeta, VM->instanceId, sourceResource->hostname, targetResource->hostname);
 
+    err |= result;
     if (result) {
       logsc(EUCAERROR, "Error migrating %s from %s to %s!\n",
           VM->instanceId,
@@ -318,18 +303,49 @@ void schedule(ncMetadata * ccMeta) {
     }
   }
 
-  // If we just ran in the manualScheduler, jump out.
+  return err;
+}
+
+void schedule(ncMetadata * ccMeta) {
+
+  updateSchedResCache();
+  updateSchedInstCache();
+
+  const int vmCount = schedInstanceCache->numInsts;
+  scheduledVM schedule[vmCount];
+
+  // Call our scheduler...
+  int count = schedConfig.scheduler(&schedule[0]);
+  if (count == 0) {
+    logsc(EUCADEBUG, "No VMs/instances scheduled\n");
+    return;
+  }
+
+  // Scheduler algorithm returned us set of VM's it wants us to move.
+  // ...Attempt to do so!
+  applySchedule(&schedule[0], count, ccMeta);
+
+
   if (schedConfig.scheduler == manualScheduler) {
+    int i;
+    // To make sure this schedule sticks, run this count times.
+    int notdone = 1;
+    for (i = 0; i < count && notdone; ++i)
+      notdone = applySchedule(&schedule[0], count, ccMeta);
 
-    FILE * f = fopen("/tmp/sched.config", "w");
-    if (!f) return;
+    if (notdone)
+      logsc(EUCAERROR, "Error applying manual schedule!");
+    else {
+      FILE * f = fopen("/tmp/sched.config", "w");
+      if (!f) return;
 
-    fprintf(f, "%d\n%d\n%d",
-        schedConfig.schedFreq,
-        0, // No Scheduler
-        schedConfig.debugLog);
+      fprintf(f, "%d\n%d\n%d",
+          schedConfig.schedFreq,
+          0, // No Scheduler
+          schedConfig.debugLog);
 
-    fclose(f);
+      fclose(f);
+    }
   }
 }
 
