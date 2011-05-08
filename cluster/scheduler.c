@@ -726,12 +726,6 @@ int scoreSystem(monitorInfo_t * m, schedule_t * s) {
 
 }
 
-int canHostHold(ccResource * resource, ccInstance * instance) {
-  if (!resource || !instance) return 0;
-
-  return resource->availCores >= instance->ccvm.cores;
-}
-
 int migrationCost(monitorInfo_t * m, schedule_t * s, int instId, int targetNode) {
   // Computes cost of migration instance from where it is to the specified node
 
@@ -789,10 +783,13 @@ migration_t findBestMigration(monitorInfo_t * monitorInfo, schedule_t * system, 
           baseline,
           thisMigration.score);
 
-        // If this migration can't happen, don't consider it!
+        // If this instance is already on this machine, skip!
+        if (system.instOwner[i] == j) continue;
+
+        // If this host can't hold this instance, skip!
         ccInstance * instance = &schedInstanceCache->instances[i];
         ccResource * resource = &schedResourceCache->resources[j];
-        if (!canHostHold(resource, instance)) continue;
+        if (resource->availCores < instance->ccvm.cores) continue;
 
         // Use this migration as step towards next one, and explore those:
         if (depth > 0) {
