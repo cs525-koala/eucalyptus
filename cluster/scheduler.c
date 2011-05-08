@@ -716,8 +716,8 @@ int scoreSystem(monitorInfo_t * m, schedule_t * s) {
     // If we have CPU to spare here, we're fine.
     if (resourceScore > 0) resourceScore = 0;
 
-    logsc_dbg("Resource %s has score %d (avail: %d, insts: %d)\n",
-      curResource->ip, resourceScore, resourceAvail, instsUtil);
+    //logsc_dbg("Resource %s has score %d (avail: %d, insts: %d)\n",
+    //  curResource->ip, resourceScore, resourceAvail, instsUtil);
 
     totalScore += resourceScore;
   }
@@ -756,7 +756,7 @@ migration_t findBestMigration(monitorInfo_t * monitorInfo, schedule_t * system, 
 
   // Score the system.
   int baseline = scoreSystem(monitorInfo, system);
-  logsc_dbg("Baseline score: %d\n", baseline);
+  //logsc_dbg("Baseline score: %d\n", baseline);
 
   // Find the highest scoring schedule using 'depth' migrations
   int best_score = baseline;
@@ -787,12 +787,13 @@ migration_t findBestMigration(monitorInfo_t * monitorInfo, schedule_t * system, 
         thisMigration.instanceId = i;
         thisMigration.targetResource = j;
         thisMigration.score = new_system - migrate_cost;
+        thisMigration.depth = depth;
 
-        logsc_dbg("If we moved %s to %s, score would change from %d to %d\n",
-          schedInstanceCache->instances[i].instanceId,
-          schedResourceCache->resources[j].ip,
-          baseline,
-          thisMigration.score);
+        //logsc_dbg("If we moved %s to %s, score would change from %d to %d\n",
+        //  schedInstanceCache->instances[i].instanceId,
+        //  schedResourceCache->resources[j].ip,
+        //  baseline,
+        //  thisMigration.score);
 
 
         // Use this migration as step towards next one, and explore those:
@@ -800,6 +801,8 @@ migration_t findBestMigration(monitorInfo_t * monitorInfo, schedule_t * system, 
           schedule_t nextstep = testing;
           scheduledVM nextVM;
           migration_t nextMigration = findBestMigration(monitorInfo, &nextstep, depth - 1);
+          logsc_dbg("Recursion, depth %d.  Best move was %d to %d, with score %d\n",
+            depth, nextMigration.instanceId, nextMigration.targetResource, nextMigration.score);
 
           // If we do this migration, but enables a sufficiently better configuration
           // with additional migrations, use the final score as the score for
