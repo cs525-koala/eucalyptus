@@ -728,6 +728,12 @@ int scoreSystem(monitorInfo_t * m, schedule_t * s) {
 
 }
 
+int canHostHold(ccResource * resource, ccInstance * instance) {
+  if (!resource || !instance) return 0;
+
+  return resource->availCores >= instance->ccvm.cores;
+}
+
 int migrationCost(monitorInfo_t * m, schedule_t * s, int instId, int targetNode) {
   // Computes cost of migration instance from where it is to the specified node
 
@@ -735,13 +741,85 @@ int migrationCost(monitorInfo_t * m, schedule_t * s, int instId, int targetNode)
   return 10; // Magic, arbitrary, etc.
 }
 
-int dynScheduler(scheduledVM* schedule) {
+typedef struct
+{
+  int instanceId;
+  int targetResource;
+  int score;
+} migration_t;
+
+// Recursively finds best migration, looking at most depth migrations ahead.
+migration_t findBestMigration(monitorInfo_t * monitorInfo, schedule_t * system, int depth) {
 
   // Algorithm:
   // Score the system, as sum of 'suitability' scores of each node with respect to the instances on it.
   // For each possible migration:
   //   Calculate cost of migration itself
   // If the score of the new system outweighs the cost of migration, then do it!
+
+  const int resCount = schedResourceCache->numResources;
+  const int instCount = schedInstanceCache->numInsts;
+  int i, j;
+
+  // Score the system.
+  int baseline = scoreSystem(monitorInfo, system);
+  logsc_dbg("Baseline score: %d\n", baseline);
+
+  // Find the highest scoring schedule using 'depth' migrations
+  int best_score = baseline;
+
+  migration_t migration;
+  migration.score = -1;
+
+  for(i = 0; i < instCount; ++i) {
+      schedule_t testing = *system;
+
+      for (j = 0; j < resCount; ++j) {
+        testing.instOwner[i] = j;
+        migration_t thisMigration;
+
+        int new_system = scoreSystem(monitorInfo, &testing);
+        int migrate_cost = migrationCost(monitorInfo, &testing, i, j);
+
+        thisMigration.instanceId = i;
+        thisMigration.targetResource = j;
+        thisMigration.score = new_system - migrate_cost;
+
+        logsc_dbg("If we moved %s to %s, score would change from %d to %d\n",
+          schedInstanceCache->instances[i].instanceId,
+          schedResourceCache->resources[j].ip,
+          baseline,
+          thisMigration.score);
+
+        // If this migration can't happen, don't consider it!
+        ccInstance * instance = &schedInstanceCache->instances[i];
+        ccResource * resource = &schedResourceCache->resources[j];
+        if (!canHostHold(resource, instance)) continue;
+
+        // Use this migration as step towards next one, and explore those:
+        schedule_t nextstep = testing;
+        scheduledVM nextVM;
+        migration_t nextMigration = findBestMigration(monitorInfo, &nextstep, depth - 1);
+
+        // If we do this migration, but enables a sufficiently better configuration
+        // with additional migrations, use the final score as the score for
+        // this migration, but at a penalty.
+        int effectiveNextScore = nextMigration.score - 20; // XXX TODO: MAGIC NUMBER
+        if (effectiveNextScore > thisMigration.score)
+            thisMigration.score = effectiveNextScore;
+
+        if (thisMigration.score > best_score) {
+          best_score = thisMigration.score;
+
+          migration = thisMigration;
+        }
+      }
+  }
+
+  return migration;
+}
+
+int dynScheduler(scheduledVM* schedule) {
 
   const int resCount = schedResourceCache->numResources;
   const int instCount = schedInstanceCache->numInsts;
@@ -757,39 +835,16 @@ int dynScheduler(scheduledVM* schedule) {
     system.instOwner[i] = schedInstanceCache->instances[i].ncHostIdx;
   }
 
-  // Score the system.
-  int baseline = scoreSystem(&monitorInfo, &system);
-  logsc_dbg("Baseline score: %d\n", baseline);
+  migration_t migration = findBestMigration(&monitorInfo, &system,2);
 
-  // Find the highest scoring schedule using a single migration
-  int best_score = baseline;
+  // If we found a migration, use it!
+  if (migration.score != -1) {
+    schedule[0].instance = &schedInstanceCache->instances[migration.instanceId];
+    schedule[0].resource = &schedResourceCache->resources[migration.targetResource];
 
-  for(i = 0; i < instCount; ++i) {
-      schedule_t testing = system;
-
-      for (j = 0; j < resCount; ++j) {
-        testing.instOwner[i] = j;
-
-        int new_system = scoreSystem(&monitorInfo, &testing);
-        int migrate_cost = migrationCost(&monitorInfo, &testing, i, j);
-        int new_score = new_system - migrate_cost;
-
-        logsc_dbg("If we moved %s to %s, score would change from %d to %d\n",
-          schedInstanceCache->instances[i].instanceId,
-          schedResourceCache->resources[j].ip,
-          baseline,
-          new_score);
-
-        if (new_score > best_score) {
-          best_score = new_score;
-
-          // Indicate that we should do this.
-          // Note that if we find a better one later, we'll overwrite this.
-          schedule[0].instance = &schedInstanceCache->instances[i];
-          schedule[0].resource = &schedResourceCache->resources[j];
-        }
-      }
+    // Got one!
+    return 1;
   }
 
-  return best_score > baseline;
+  return 0;
 }
