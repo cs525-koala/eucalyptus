@@ -33,6 +33,8 @@
 // Same for resources.
 #define SCHED_RESOURCE_MAX 10
 
+#define MIGRATION_COST 30
+
 static void schedule(ncMetadata * ccMeta);
 
 typedef struct {
@@ -730,7 +732,7 @@ int migrationCost(monitorInfo_t * m, schedule_t * s, int instId, int targetNode)
   // Computes cost of migration instance from where it is to the specified node
 
   // TODO: Actually do this.
-  return 10; // Magic, arbitrary, etc.
+  return MIGRATION_COST;
 }
 
 typedef struct
@@ -801,16 +803,22 @@ migration_t findBestMigration(monitorInfo_t * monitorInfo, schedule_t * system, 
           schedule_t nextstep = testing;
           scheduledVM nextVM;
           migration_t nextMigration = findBestMigration(monitorInfo, &nextstep, depth - 1);
-          logsc_dbg("Recursion, depth %d.  Best move was %d to %d, with score %d\n",
-            depth, nextMigration.instanceId, nextMigration.targetResource, nextMigration.score);
 
           // If we do this migration, but enables a sufficiently better configuration
           // with additional migrations, use the final score as the score for
           // this migration, but at a penalty.
-          int effectiveNextScore = nextMigration.score - 20; // XXX TODO: MAGIC NUMBER
+          int effectiveNextScore = nextMigration.score - MIGRATION_COST; // XXX TODO: MAGIC NUMBER
           if (effectiveNextScore > thisMigration.score) {
             thisMigration.depth = nextMigration.depth;
             thisMigration.score = effectiveNextScore;
+
+            if (depth == 2) {
+              logsc_dbg("Best move is now %s to %s, score: %d baseline: %d\n",
+                schedInstanceCache->instances[i].instanceId,
+                schedResourceCache->resources[j].ip,
+                thisMigration.score,
+                baseline);
+            }
           }
 
         }
