@@ -738,6 +738,7 @@ typedef struct
   int instanceId;
   int targetResource;
   int score;
+  int depth;
 } migration_t;
 
 // Recursively finds best migration, looking at most depth migrations ahead.
@@ -762,14 +763,24 @@ migration_t findBestMigration(monitorInfo_t * monitorInfo, schedule_t * system, 
 
   migration_t migration;
   migration.score = -1;
+  migration.depth = depth;
 
   for(i = 0; i < instCount; ++i) {
       schedule_t testing = *system;
 
       for (j = 0; j < resCount; ++j) {
-        testing.instOwner[i] = j;
-        migration_t thisMigration;
 
+        // If this instance is already on this machine, skip!
+        if (system->instOwner[i] == j) continue;
+
+        // If this host can't hold this instance, skip!
+        ccInstance * instance = &schedInstanceCache->instances[i];
+        ccResource * resource = &schedResourceCache->resources[j];
+        if (resource->availCores < instance->ccvm.cores) continue;
+
+        testing.instOwner[i] = j;
+
+        migration_t thisMigration;
         int new_system = scoreSystem(monitorInfo, &testing);
         int migrate_cost = migrationCost(monitorInfo, &testing, i, j);
 
@@ -783,16 +794,9 @@ migration_t findBestMigration(monitorInfo_t * monitorInfo, schedule_t * system, 
           baseline,
           thisMigration.score);
 
-        // If this instance is already on this machine, skip!
-        if (system.instOwner[i] == j) continue;
-
-        // If this host can't hold this instance, skip!
-        ccInstance * instance = &schedInstanceCache->instances[i];
-        ccResource * resource = &schedResourceCache->resources[j];
-        if (resource->availCores < instance->ccvm.cores) continue;
 
         // Use this migration as step towards next one, and explore those:
-        if (depth > 0) {
+        if (depth > 1) {
           schedule_t nextstep = testing;
           scheduledVM nextVM;
           migration_t nextMigration = findBestMigration(monitorInfo, &nextstep, depth - 1);
@@ -801,8 +805,11 @@ migration_t findBestMigration(monitorInfo_t * monitorInfo, schedule_t * system, 
           // with additional migrations, use the final score as the score for
           // this migration, but at a penalty.
           int effectiveNextScore = nextMigration.score - 20; // XXX TODO: MAGIC NUMBER
-          if (effectiveNextScore > thisMigration.score)
+          if (effectiveNextScore > thisMigration.score) {
+            thisMigration.depth = nextMigration.depth;
             thisMigration.score = effectiveNextScore;
+          }
+
         }
 
         if (thisMigration.score > best_score) {
@@ -838,6 +845,8 @@ int dynScheduler(scheduledVM* schedule) {
   if (migration.score != -1) {
     schedule[0].instance = &schedInstanceCache->instances[migration.instanceId];
     schedule[0].resource = &schedResourceCache->resources[migration.targetResource];
+
+    logsc_dbg("Final migration was at depth: %d\n", migration.depth);
 
     // Got one!
     return 1;
