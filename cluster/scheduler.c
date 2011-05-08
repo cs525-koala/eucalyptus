@@ -833,7 +833,7 @@ int dynScheduler(scheduledVM* schedule) {
     system.instOwner[i] = schedInstanceCache->instances[i].ncHostIdx;
   }
 
-  migration_t migration = findBestMigration(&monitorInfo, &system,2);
+  migration_t migration = findBestMigration(&monitorInfo, &system, 2);
 
   // If we found a migration, use it!
   if (migration.score != -1) {
