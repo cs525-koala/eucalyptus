@@ -795,16 +795,18 @@ migration_t findBestMigration(monitorInfo_t * monitorInfo, schedule_t * system, 
         if (!canHostHold(resource, instance)) continue;
 
         // Use this migration as step towards next one, and explore those:
-        schedule_t nextstep = testing;
-        scheduledVM nextVM;
-        migration_t nextMigration = findBestMigration(monitorInfo, &nextstep, depth - 1);
+        if (depth > 0) {
+          schedule_t nextstep = testing;
+          scheduledVM nextVM;
+          migration_t nextMigration = findBestMigration(monitorInfo, &nextstep, depth - 1);
 
-        // If we do this migration, but enables a sufficiently better configuration
-        // with additional migrations, use the final score as the score for
-        // this migration, but at a penalty.
-        int effectiveNextScore = nextMigration.score - 20; // XXX TODO: MAGIC NUMBER
-        if (effectiveNextScore > thisMigration.score)
+          // If we do this migration, but enables a sufficiently better configuration
+          // with additional migrations, use the final score as the score for
+          // this migration, but at a penalty.
+          int effectiveNextScore = nextMigration.score - 20; // XXX TODO: MAGIC NUMBER
+          if (effectiveNextScore > thisMigration.score)
             thisMigration.score = effectiveNextScore;
+        }
 
         if (thisMigration.score > best_score) {
           best_score = thisMigration.score;
