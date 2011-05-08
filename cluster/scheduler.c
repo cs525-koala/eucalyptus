@@ -821,11 +821,12 @@ migration_t findBestMigration(monitorInfo_t * monitorInfo, schedule_t * system, 
           migration = thisMigration;
 
           if (depth == 2) {
-            logsc_dbg("Best move is now %s to %s, score: %d baseline: %d\n",
+            logsc_dbg("Best move is now %s to %s, score: %d baseline: %d (depth: %d)\n",
                 schedInstanceCache->instances[i].instanceId,
                 schedResourceCache->resources[j].ip,
                 migration.score,
-                baseline);
+                baseline,
+                migration.depth);
           }
         }
       }
